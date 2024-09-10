@@ -1,0 +1,5 @@
+STRINGS:
+Hello, World!
+
+DOUBLES:
+94939
