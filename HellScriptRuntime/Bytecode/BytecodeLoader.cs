@@ -10,6 +10,7 @@
 // #define BUFFER_30m
 
 using HellScriptRuntime.Exceptions;
+using HellScriptRuntime.Runtime.BaseTypes;
 using HellScriptShared.Bytecode;
 using HellScriptShared.Exceptions;
 using System.Numerics;
@@ -50,6 +51,8 @@ internal class BytecodeLoader : IDisposable
     private readonly BigInteger[] IntegerConstants;
     // private readonly double[] FloatingConstants;
 
+    public readonly HellFunction[] DefinedFunctions;
+
     public BytecodeLoader(string filePath)
     {
         if (!File.Exists(filePath))
@@ -84,7 +87,6 @@ internal class BytecodeLoader : IDisposable
             byte[] stringBytes = binaryReader.ReadBytes(stringLength * 2);
 
             StringConstants[i] = Encoding.Unicode.GetString(stringBytes);
-
         }
 
         /* Load numerical constants */
@@ -97,6 +99,27 @@ internal class BytecodeLoader : IDisposable
 
             byte[] bytes = binaryReader.ReadBytes(bigLength);
             IntegerConstants[i] = new BigInteger(bytes);
+        }
+
+        /* Load functions table */
+        int tableLen = LoadInt();
+        DefinedFunctions = new HellFunction[tableLen];
+
+        for (int i = 0; i < tableLen; ++i)
+        {
+            // Location
+            int functionIndex = LoadInt();
+
+            // Name
+            int stringLength = LoadInt();
+            byte[] stringBytes = binaryReader.ReadBytes(stringLength * 2);
+            string functionName = Encoding.Unicode.GetString(stringBytes);
+
+            // Arg count
+            byte[] data = binaryReader.ReadBytes(sizeof(short));
+            short argCount = BitConverter.ToInt16(data);
+
+            DefinedFunctions[i] = new HellFunction(functionName, argCount, functionIndex);
         }
 
         bytecode = binaryReader.ReadBytes(bufferSize);

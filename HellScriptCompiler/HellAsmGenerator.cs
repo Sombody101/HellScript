@@ -13,7 +13,7 @@ internal sealed class HellAsmGenerator : HellAsm_ParserBaseVisitor<byte[]>
 {
     private static readonly byte[] empty = [];
 
-    public static void StartProgramParse(HellAsm_Parser parser, BinaryWriter bw)
+    public static HellAsmGenerator StartProgramParse(HellAsm_Parser parser, BinaryWriter bw)
     {
         var sw = Stopwatch.StartNew();
 
@@ -23,86 +23,23 @@ internal sealed class HellAsmGenerator : HellAsm_ParserBaseVisitor<byte[]>
 
         // Resolve labels
         visitor.constants.FinalizeLabelReferences(visitor);
+        visitor.constants.FinalizeMethodReferences(visitor);
+
+        // Add an exit op if there isn't one (or the runtime will keep going and give an index exception)
+        if (visitor.bytecodeBuffer[^1] != (byte)Opcode.EXIT)
+            visitor.bytecodeBuffer.Add((byte)Opcode.EXIT);
 
         sw.Stop();
 
         Console.WriteLine($"Compilation took {sw.ElapsedMilliseconds}ms");
 
-        Console.WriteLine($"Final bytecode length: {visitor.bytecodeBuffer.Count}");
-        Console.WriteLine($"Assembly errors: {visitor.parseErrors.Count}");
-        ParseError.PrintErrors(visitor.parseErrors);
-
-        if (visitor.parseErrors.Count > 0)
-            return;
-
-        Console.WriteLine($"\nStrings ({visitor.constants.constantStrings.Count}):");
-
-        int count = 0;
-        foreach (var str in visitor.constants.constantStrings)
-        {
-            Console.WriteLine($"{count++}: {str}");
-        }
-
-        Console.WriteLine($"\nNumbers ({visitor.constants.constantNumbers.Count}):");
-
-        count = 0;
-        foreach (var num in visitor.constants.constantNumbers)
-        {
-            Console.WriteLine($"{count++}: {num}");
-        }
-
-        Console.WriteLine("\nDecompile:");
-        List<byte> bytecode = visitor.bytecodeBuffer;
-        for (int i = 0; i < bytecode.Count; ++i)
-        {
-            byte b = bytecode[i];
-
-            try
-            {
-                Opcode op = b.AsOpcode();
-
-                Console.Write($"{op,-15} ");
-                int argCount = BytecodeHelpers.ArgumentCount(op);
-
-                if (argCount > 0)
-                {
-                    var rng = bytecode.GetRange(i + 1, argCount).ToArray();
-                    var args = argCount is 4 
-                        ? BitConverter.ToInt32(rng)
-                        : BitConverter.ToInt16(rng);
-
-                    Console.WriteLine(args);
-                    i += argCount;
-                }
-                else
-                    Console.WriteLine();
-            }
-            catch (Exception e)
-            {
-                Console.WriteLine($"Invalid opcode: {e.Message}\n{b}");
-                break;
-            }
-        }
-
-        Console.WriteLine("\nWriting binary to file...");
-
-        /* Write it out to the file */
-
-        // Magic number
-        bw.Write(Encoding.ASCII.GetBytes(BytecodeHelpers.MagicNumber));
-
-        visitor.constants.DumpConstantValues(bw);
-
-        // Write the bytecode
-        bw.Write(visitor.bytecodeBuffer.ToArray());
-
-        Console.WriteLine($"Wrote {bw.BaseStream.Length} bytes");
+        return visitor;
     }
 
-    private readonly List<byte> bytecodeBuffer;
-    private readonly List<ParseError> parseErrors;
+    internal readonly List<byte> bytecodeBuffer;
+    internal readonly List<ParseError> parseErrors;
 
-    private readonly ConstantsManager constants;
+    internal readonly ConstantsManager constants;
 
     public HellAsmGenerator()
     {
@@ -116,7 +53,7 @@ internal sealed class HellAsmGenerator : HellAsm_ParserBaseVisitor<byte[]>
         parseErrors.Add(new ParseError(ex, context));
     }
 
-    private sealed class ParseError
+    internal sealed class ParseError
     {
         public ParseError(Exception ex, [Optional] ParserRuleContext context)
         {
@@ -145,22 +82,24 @@ internal sealed class HellAsmGenerator : HellAsm_ParserBaseVisitor<byte[]>
         }
     }
 
-    private sealed class ConstantsManager
+    internal sealed class ConstantsManager
     {
         internal readonly Dictionary<string, int> constantStrings;
         internal readonly Dictionary<BigInteger, int> constantNumbers;
-        internal readonly Dictionary<string, int> methodSignatures;
+        internal readonly List<MethodSignature> methodSignatures;
+        private readonly List<MethodSignature> methodReferences;
 
         // Should only get to a height of 2 of the hell assembly was build correctly
-        internal readonly Stack<List<AwaitingBranch>> branches;
-        internal readonly Stack<List<AwaitingBranch>> labels;
-        internal readonly List<int> offsetCounter;
+        private readonly Stack<List<AwaitingBranch>> branches;
+        private readonly Stack<List<AwaitingBranch>> labels;
+        private readonly List<int> offsetCounter;
 
         internal ConstantsManager()
         {
             constantStrings = [];
             constantNumbers = [];
             methodSignatures = [];
+            methodReferences = [];
             branches = [];
             labels = [];
             offsetCounter = [0];
@@ -215,12 +154,26 @@ internal sealed class HellAsmGenerator : HellAsm_ParserBaseVisitor<byte[]>
 
         public void AddBranch(string labelReference, int globalPosition)
         {
-            branches.Last().Add(new(labelReference, globalPosition));
+            branches.First().Add(new(labelReference, globalPosition));
         }
 
         public void AddLabelDefinition(string labelName, int offset)
         {
-            labels.Last().Add(new(labelName, offset));
+            labels.First().Add(new(labelName, offset));
+        }
+
+        public void PushBranchContext()
+        {
+            labels.Push([]);
+            branches.Push([]);
+            offsetCounter.Add(0);
+        }
+
+        public void PopBranchContext()
+        {
+            labels.Pop();
+            branches.Pop();
+            offsetCounter.RemoveAt(offsetCounter.Count - 1);
         }
 
         public void IncreaseProgramCounter(int count = 1)
@@ -233,56 +186,117 @@ internal sealed class HellAsmGenerator : HellAsm_ParserBaseVisitor<byte[]>
                 offsetCounter[i] += count;
         }
 
+        public void IncreaseGlobalCounter(int count = 1)
+        {
+            if (count is 0)
+                return;
+
+            offsetCounter[0] += count;
+        }
+
         public int GetCounter()
         {
             return offsetCounter[^1];
         }
 
-        public int SetMethodSignature(string methodName)
+        public int GetGlobalCounter()
         {
-            if (methodSignatures.TryGetValue(methodName, out _))
+            return offsetCounter[0];
+        }
+
+        public int SetMethodSignature(string methodName, short argCount, int bytecodeOffset)
+        {
+            if (methodSignatures.Any(sig => sig.Name == methodName))
             {
                 throw new Exception($"Method '{methodName}' has already been defined");
             }
 
-            int newIndex = methodSignatures.Count;
-            methodSignatures.Add(methodName, newIndex);
+            MethodSignature newSig = new()
+            {
+                Name = methodName,
+                ArgCount = argCount,
+                Location = bytecodeOffset
+            };
 
-            return newIndex;
+            methodSignatures.Add(newSig);
+
+            return methodSignatures.Count - 1;
         }
 
         public int GetMethodSignature(string methodName)
         {
-            if (!methodSignatures.TryGetValue(methodName, out int key))
+            int count = methodSignatures.Count;
+            for (int i = 0; i < count; ++i)
             {
-                throw new Exception($"Reference to undefined method '{methodName}'");
+                if (methodSignatures[i].Name == methodName)
+                    return i;
             }
 
-            return key;
+            throw new Exception($"Reference to undefined method '{methodName}'");
+        }
+
+        public void AddMethodReference(string methodReference, int globalPosition)
+        {
+            MethodSignature newSig = new()
+            {
+                Name = methodReference,
+                Location = globalPosition
+            };
+
+            methodReferences.Add(newSig);
         }
 
         public void FinalizeLabelReferences(HellAsmGenerator generator)
         {
             // Get the last elements on the stack (to also resolve methods)
-            var branches = this.branches.Last();
-            var labels = this.labels.Last();
+            var branches = this.branches.First();
+            var labels = this.labels.First();
+
+            var bytecode = generator.bytecodeBuffer;
 
             foreach (var label in labels)
             {
-                var sbranches = branches.Where(branch => branch.ReferenceName == label.ReferenceName).ToArray();
+                var sbranches = branches.Where(branch => branch.Name == label.Name).ToArray();
 
                 // No branches with the wanted label
                 if (sbranches.Length is 0)
                     continue;
 
-                var bytecode = generator.bytecodeBuffer;
+                byte[] data = BitConverter.GetBytes(label.Location);
+
                 foreach (var branch in sbranches)
                 {
-                    byte[] data = BitConverter.GetBytes(label.ReferenceLocation);
+                    // The label location is an offset (to work in methods and global scope), the branch location is absolute within the bytecode
+                    bytecode.RemoveRange(branch.Location, 4);
+                    bytecode.InsertRange(branch.Location, data);
+                }
+            }
+        }
 
-                    // The label location is an offset, the branch location is absolute within the bytecode array
-                    bytecode.RemoveRange(branch.ReferenceLocation, data.Length);
-                    bytecode.InsertRange(branch.ReferenceLocation, data);
+        public void FinalizeMethodReferences(HellAsmGenerator generator)
+        {
+            var bytecode = generator.bytecodeBuffer;
+
+            foreach (var methodName in methodSignatures.Select(method => method.Name))
+            {
+                try
+                {
+                    var references = methodReferences.Where(reference => reference.Name == methodName).ToArray();
+
+                    if (references.Length is 0)
+                        continue;
+
+                    byte[] data = BitConverter.GetBytes(GetMethodSignature(methodName));
+
+                    foreach (var reference in references.Select(reference => reference.Location))
+                    {
+                        bytecode.RemoveRange(reference, 4);
+                        bytecode.InsertRange(reference, data);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    generator.ReportError(ex);
                 }
             }
         }
@@ -314,6 +328,25 @@ internal sealed class HellAsmGenerator : HellAsm_ParserBaseVisitor<byte[]>
                 // Number data
                 bw.Write(bytes);
             }
+
+            // Method table
+            bw.Write(methodSignatures.Count);
+
+            for (int i = 0; i < methodSignatures.Count; ++i)
+            {
+                var method = methodSignatures[i];
+
+                // Index
+                bw.Write(method.Location);
+
+                // Method name (Length/Value)
+                string name = method.Name;
+                bw.Write(name.Length);
+                bw.Write(Encoding.Unicode.GetBytes(name));
+
+                // Method arguments
+                bw.Write(method.ArgCount);
+            }
         }
     }
 
@@ -321,33 +354,65 @@ internal sealed class HellAsmGenerator : HellAsm_ParserBaseVisitor<byte[]>
     {
         public AwaitingBranch(string name, int location)
         {
-            ReferenceName = name;
-            ReferenceLocation = location;
+            Name = name;
+            Location = location;
         }
 
-        public readonly string ReferenceName;
-        public readonly int ReferenceLocation;
+        public readonly string Name;
+        public readonly int Location;
+    }
+
+    internal sealed class MethodSignature
+    {
+        public string Name { get; init; } = string.Empty;
+        public short ArgCount { get; init; }
+        public int Location { get; init; }
+
+        public override string ToString()
+        {
+            return $"[ {Name}, {ArgCount}, {Location} ]";
+        }
     }
 
     public override byte[] VisitProgramLine([NotNull] HellAsm_Parser.ProgramLineContext context)
     {
         if (context.line() is { } line)
         {
-            byte[] bytes = Visit(line);
+            byte[] code = Visit(line);
 
-            if (bytes.Length is 0)
-                return empty;
+            bytecodeBuffer.AddRange(code);
+        }
+        else
+        {
+            constants.PushBranchContext();
+            byte[] method = Visit(context.methodDeclaration());
 
-            bytecodeBuffer.AddRange(bytes);
+            bytecodeBuffer.AddRange(method);
+
+            constants.FinalizeLabelReferences(this);
+            constants.PopBranchContext();
+
+            // constants.IncreaseProgramCounter(method.Length);
+        }
+
+        return empty;
+    }
+
+    public override byte[] VisitLine([NotNull] HellAsm_Parser.LineContext context)
+    {
+        byte[] bytes;
+
+        if (context.opcode() is { } opcode)
+        {
+            bytes = Visit(opcode);
             constants.IncreaseProgramCounter(bytes.Length);
         }
         else
         {
-            throw new Exception("Methods are not supported");
-            bytecodeBuffer.AddRange(Visit(context.methodDeclaration()));
+            bytes = Visit(context.label());
         }
 
-        return empty;
+        return bytes;
     }
 
     public override byte[] VisitOpcode([NotNull] HellAsm_Parser.OpcodeContext context)
@@ -369,15 +434,17 @@ internal sealed class HellAsmGenerator : HellAsm_ParserBaseVisitor<byte[]>
                 if (arg.Identifier() is not { } label)
                     throw new Exception("Given branch argument is not a label");
 
-                // Add a new unresolved branch
-                constants.AddBranch(label.GetText(), bytecodeBuffer.Count + outputBuffer.Count);
+                // Add a new unresolved branch (with an absolute location)
+                constants.AddBranch(label.GetText(), constants.GetGlobalCounter() + 1);
 
                 // Add null bytes for now
                 outputBuffer.AddRange(BytecodeHelpers.EmptyByte(argCount));
             }
             else if (argCount is not 0)
             {
-                var argument = context.argument() ?? throw new NoArgumentSuppliedException(opcode);
+                var argument = context.argument()
+                    ?? throw new NoArgumentSuppliedException(opcode);
+
                 var arguments = Visit(argument);
 
                 if (argCount != arguments.Length)
@@ -386,7 +453,7 @@ internal sealed class HellAsmGenerator : HellAsm_ParserBaseVisitor<byte[]>
                 outputBuffer.AddRange(arguments);
             }
 
-            return [..outputBuffer];
+            return [.. outputBuffer];
         }
         catch (Exception ex)
         {
@@ -441,11 +508,12 @@ internal sealed class HellAsmGenerator : HellAsm_ParserBaseVisitor<byte[]>
                 }
                 else if (fastText.StartsWith('-'))
                 {
+                    throw new Exception($"A fast integer cannot be negative: {fastText}");
                     // Signed
-                    if (!int.TryParse(fastText, out int i32))
-                        throw new InvalidFastConstantException(fastText);
-
-                    outputBytes = BitConverter.GetBytes(i32);
+                    // if (!int.TryParse(fastText, out int i32))
+                    //     throw new InvalidFastConstantException(fastText);
+                    // 
+                    // outputBytes = BitConverter.GetBytes(i32);
                 }
                 else
                 {
@@ -476,55 +544,61 @@ internal sealed class HellAsmGenerator : HellAsm_ParserBaseVisitor<byte[]>
         }
         else if (context.Identifier() is { } methodIdentifier)
         {
+            // var methodReference = constants.GetMethodSignature(methodIdentifier.GetText());
+            //return BitConverter.GetBytes(methodReference);
+
+            constants.AddMethodReference(methodIdentifier.GetText(), constants.GetGlobalCounter() + 1);
+
+            return BytecodeHelpers.EmptyByte(4);
+
             throw new NotImplementedException($"The method datatype has not been implemented: {methodIdentifier.GetText()}");
         }
 
         throw new NotImplementedException("The wanted datatype has not been implemented yet.");
     }
 
-    // public override object VisitMethodDeclaration([NotNull] HellAsm_Parser.MethodDeclarationContext context)
-    // {
-    //     var methodIdentifier = context.Identifier();
-    // 
-    //     try
-    //     {
-    //         string methodName = methodIdentifier.GetText();
-    //         int signature = constants.SetMethodSignature(methodName);
-    // 
-    //         List<byte> blockBuffer = new()
-    //         {
-    //             signature
-    //         };
-    // 
-    //         foreach (var line in context.line())
-    //             blockBuffer.Add((byte)Visit(line)!);
-    // 
-    //         return blockBuffer.ToArray();
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         ReportError(ex, context);
-    //     }
-    // }
-    // 
-    // public override object VisitMethodReference([NotNull] HellAsm_Parser.MethodReferenceContext context)
-    // {
-    //     try
-    //     {
-    //         var methodReference = constants.GetMethodSignature(context.Identifier().GetText());
-    // 
-    //         return BitConverter.GetBytes(methodReference);
-    //     }
-    //     catch (Exception ex)
-    //     {
-    //         ReportError(ex, context);
-    //     }
-    // 
-    //     return null;
-    // 
-    //     // foreach (var arg in context.argumentList().Identifier())
-    //     // {
-    //     // 
-    //     // }
-    // }
+    public override byte[] VisitMethodDeclaration([NotNull] HellAsm_Parser.MethodDeclarationContext context)
+    {
+        var methodIdentifier = context.Identifier();
+
+        try
+        {
+            string methodName = methodIdentifier.GetText();
+            string argCountStr = context.IntegerConstant().GetText();
+
+            if (!short.TryParse(argCountStr, out short argCount))
+            {
+                throw new Exception($"Invalid constant short argument count '{argCountStr}'");
+            }
+
+            int methodStartOffset = bytecodeBuffer.Count + 5;
+            _ = constants.SetMethodSignature(methodName, argCount, methodStartOffset);
+
+            List<byte> blockBuffer = [];
+
+            constants.IncreaseGlobalCounter(5);
+
+            foreach (var line in context.line())
+            {
+                byte[] bytes = Visit(line);
+                blockBuffer.AddRange(bytes);
+                //constants.IncreaseProgramCounter(bytes.Length);
+            }
+
+            // Add JMP operation to skip over the method (in sequential bytecode)
+            List<byte> jmpOp = [(byte)Opcode.JMP];
+            int jumpLocation = blockBuffer.Count + methodStartOffset;
+            jmpOp.AddRange(BitConverter.GetBytes(jumpLocation));
+
+            blockBuffer.InsertRange(0, [.. jmpOp]);
+
+            return [.. blockBuffer];
+        }
+        catch (Exception ex)
+        {
+            ReportError(ex, context);
+        }
+
+        return empty;
+    }
 }

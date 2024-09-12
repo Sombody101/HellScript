@@ -4,7 +4,7 @@ namespace HellScriptShared.Bytecode;
 
 internal static class BytecodeHelpers
 {
-    public const string MagicNumber = "\x6\x9hellscript\0\0";
+    public const string MagicNumber = "\x9hellscript\x9";
 
     private const int BITS_32 = 4;
     private const int BITS_24 = 3;
@@ -30,17 +30,17 @@ internal static class BytecodeHelpers
             { "stloc", nameof(Opcode.STORE_LOCAL) },
             { "ldloc", nameof(Opcode.LOAD_LOCAL) },
 
-            { "add", nameof(Opcode.ADD) },
-            { "sub", nameof(Opcode.SUB) },
-            { "mult", nameof(Opcode.MULT) },
-            { "div", nameof(Opcode.DIVIDE) },
+            { "add", nameof(Opcode.BINARY_ADD) },
+            { "sub", nameof(Opcode.BINARY_SUB) },
+            { "mult", nameof(Opcode.BINARY_MULT) },
+            { "div", nameof(Opcode.BINARY_DIVIDE) },
 
             { "jmp", nameof(Opcode.JMP) },
             { "jeq", nameof(Opcode.JMP_EQ) },
             { "jlt", nameof(Opcode.JMP_LT) },
             { "jgt", nameof(Opcode.JMP_GT) },
 
-            { "call", nameof(Opcode.CALL) },
+            { "call", nameof(Opcode.CALL_FUNC) },
             { "hellcall", nameof(Opcode.HELLCALL) },
 
             { "ret", nameof(Opcode.RETURN_VOID) },
@@ -76,6 +76,10 @@ internal static class BytecodeHelpers
 
             // Branches (Not really needed; Can be hard coded)
                 or (>= Opcode.JMP and <= Opcode.JMP_LTEQ)
+
+            // Method calls
+                or Opcode.CALL_FUNC
+                or Opcode.HELLCALL
                     => BITS_32,
 
             #endregion Four bytes
@@ -97,13 +101,11 @@ internal static class BytecodeHelpers
 
     public static bool AsOpcode(this byte code, out Opcode opcode)
     {
-        if (!Enum.IsDefined(typeof(Opcode), code))
-        {
-            opcode = (Opcode)code;
-            return false;
-        }
-
         opcode = (Opcode)code;
+        
+        if (!Enum.IsDefined(typeof(Opcode), code))
+            return false;
+
         return true;
     }
 

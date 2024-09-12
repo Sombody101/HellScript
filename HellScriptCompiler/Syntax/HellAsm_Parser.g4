@@ -28,15 +28,19 @@ metadataSet
     ;
 
 methodDeclaration
-    : Method Identifier '(' ArgCount IntegerConstant ')' definitionMetadata? '{' line* '}'
+    : Method Identifier '(' ArgCount? IntegerConstant ')' definitionMetadata? '{' line* '}'
     ;
 
 structDeclaration
-    : Structure Identifier '{' '}'
+    : Structure Identifier '{' fieldDeclaration* '}'
     ;
 
 definitionMetadata
     : CompilerArg '{' metadataSet* '}'
+    ;
+
+fieldDeclaration
+    : Local Identifier
     ;
 
 line
@@ -49,7 +53,7 @@ label
     ;
 
 opcode
-    : Identifier (argument | methodReference)?
+    : Identifier (argument)?
     ;
 
 argumentList
@@ -61,11 +65,8 @@ argument
     | FastConstant
     | FloatingConstant
     | IntegerConstant
+    | Identifier '(' /*argumentList?*/ ')'
     | '[' Identifier ']'
-    ;
-
-methodReference
-    : Identifier '(' /*argumentList?*/ ')'
     ;
 
 skipWhitespace

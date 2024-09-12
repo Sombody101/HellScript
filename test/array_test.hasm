@@ -1,0 +1,33 @@
+.program {}
+
+newarr
+stloc [3]
+
+ldfast [0]
+stloc [2]
+
+jmp [loop_start]
+
+loop_body:
+    pop
+    pop
+    ldloc [3]
+    ldloc [2]
+    ldloc [2]
+    stelm
+
+    ldfast [1]
+    ldloc [2]
+    add
+    nop
+    stloc [2]
+    pop
+
+loop_start:
+    ldfast [10_000]
+    ldloc [2]
+
+    jlt [loop_body]
+
+exit:
+    exit

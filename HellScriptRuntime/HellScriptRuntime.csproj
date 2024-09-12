@@ -8,6 +8,7 @@
     <PublishAot>true</PublishAot>
 	<StripSymbols>true</StripSymbols>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <AssemblyName>hell</AssemblyName>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">

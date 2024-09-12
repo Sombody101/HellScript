@@ -1,33 +1,34 @@
 .program {}
 
-newarr
-stloc [3]
+; call wanted_method()
+; call wanted_method()
+; call wanted_method()
+; call wanted_method()
+call wanted_method()
+call exit_method()
 
-ldfast [0]
-stloc [2]
-
-jmp [loop_start]
-
-loop_body:
-    pop
-    pop
-    ldloc [3]
-    ldloc [2]
-    ldloc [2]
-    stelm
-
-    ldfast [1]
-    ldloc [2]
-    add
+.method wanted_method(0)
+{
+    ldfast [214748364]
     nop
-    stloc [2]
-    pop
+    call exit_method()
+    ret
+}
 
-loop_start:
-    ldfast [10_000]
-    ldloc [2]
+.method exit_method(0)
+{
+    ldfast [69]
+    nop
+    jmp [exit]
+    stelm
+    exit:
+    ret
+}
 
-    jlt [loop_body]
-
-exit:
+.method NOT_TO_RUN(0)
+{
     exit
+    ret
+}
+
+exit

@@ -74,6 +74,12 @@ public interface IHellAsm_ParserVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitDefinitionMetadata([NotNull] HellAsm_Parser.DefinitionMetadataContext context);
 	/// <summary>
+	/// Visit a parse tree produced by <see cref="HellAsm_Parser.fieldDeclaration"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitFieldDeclaration([NotNull] HellAsm_Parser.FieldDeclarationContext context);
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="HellAsm_Parser.line"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
@@ -103,12 +109,6 @@ public interface IHellAsm_ParserVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
 	Result VisitArgument([NotNull] HellAsm_Parser.ArgumentContext context);
-	/// <summary>
-	/// Visit a parse tree produced by <see cref="HellAsm_Parser.methodReference"/>.
-	/// </summary>
-	/// <param name="context">The parse tree.</param>
-	/// <return>The visitor result.</return>
-	Result VisitMethodReference([NotNull] HellAsm_Parser.MethodReferenceContext context);
 	/// <summary>
 	/// Visit a parse tree produced by <see cref="HellAsm_Parser.skipWhitespace"/>.
 	/// </summary>

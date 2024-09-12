@@ -1,4 +1,6 @@
-﻿using HellScriptRuntime.Bytecode;
+﻿#define PRINT_OPCODES
+
+using HellScriptRuntime.Bytecode;
 using HellScriptRuntime.Runtime.BaseTypes;
 using HellScriptRuntime.Runtime.BaseTypes.Operators;
 using HellScriptShared.Bytecode;
@@ -20,7 +22,6 @@ internal class HellRuntime
         bytecodeLoader = _bytecodeLoader;
 
         Frames = new();
-        DefinedFunctions = [];
 
         var globalFrame = new StackFrame("<global>", null);
 
@@ -39,9 +40,7 @@ internal class HellRuntime
     public StackFrame GlobalFrame => Frames.Last();
     public StackFrame CurrentFrame => Frames.First();
 
-    public List<HellFunction> DefinedFunctions;
-
-    public IHellType ExecuteBytecode(int position)
+    public IHellType? ExecuteBytecode(int position)
     {
         bytecodeLoader.JumpTo(position);
 
@@ -50,15 +49,18 @@ internal class HellRuntime
 
         while (true)
         {
-            var currentOpcode = bytecodeLoader.ReadOpcode();
+            Opcode currentOpcode = bytecodeLoader.ReadOpcode();
 
-            // Console.WriteLine($"Running [{bytecodeLoader.BytecodeIndex}]: 0x{(byte)currentOpcode,-3} ({currentOpcode})");
+#if PRINT_OPCODES
+            Console.WriteLine($"{bytecodeLoader.BytecodeIndex.ToString() + ':',-5} 0x{(byte)currentOpcode,-3} ({currentOpcode})");
+#endif
 
             switch (currentOpcode)
             {
                 case Opcode.NOP:
                     {
                         // No operation
+                        Console.WriteLine(CurrentFrame.DataStack.First().Value);
                     }
                     continue;
 
@@ -174,6 +176,9 @@ internal class HellRuntime
                             return stack.Pop();
                     }
 
+                case Opcode.RETURN_VOID:
+                    return null;
+
                 // Exits the program, using the 
                 case Opcode.EXIT:
                     {
@@ -187,7 +192,7 @@ internal class HellRuntime
 
                 /* Arithmetic */
 
-                case Opcode.ADD:
+                case Opcode.BINARY_ADD:
                     {
                         IHellType? value1 = stack.Pop();
                         IHellType? value2 = stack.Pop();
@@ -198,7 +203,7 @@ internal class HellRuntime
                     }
                     break;
 
-                case Opcode.SUB:
+                case Opcode.BINARY_SUB:
                     {
                         IHellType? value1 = stack.Pop();
                         IHellType? value2 = stack.Pop();
@@ -289,9 +294,21 @@ internal class HellRuntime
 
                 /* Method operations */
 
-                case Opcode.DEFINE_METHOD:
+                case Opcode.CALL_FUNC:
                     {
+                        // Setup the new call stack frame
+                        int methodIndex = bytecodeLoader.LoadIntArg();
+                        HellFunction method = bytecodeLoader.DefinedFunctions[methodIndex];
 
+                        StackFrame methodFrame = new(functionBeingCalled: method);
+                        Frames.Push(methodFrame);
+
+                        // Start the method
+                        int returnAddress = bytecodeLoader.BytecodeIndex;
+                        ExecuteBytecode(method.BytecodePosition);
+                        bytecodeLoader.JumpTo(returnAddress);
+
+                        Frames.Pop();
                     }
                     break;
 

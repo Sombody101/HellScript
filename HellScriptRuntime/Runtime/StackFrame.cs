@@ -14,11 +14,10 @@ internal class StackFrame
     /// </summary>
     public readonly Stack<IHellType?> DataStack;
 
-    public HellFunction? FunctionBeingCalled
-    {
-        get;
-        init;
-    }
+    /// <summary>
+    /// The function this frame is associated with
+    /// </summary>
+    public HellFunction? FunctionBeingCalled { get; init; }
 
     public StackFrame([Optional] string frameName, [Optional] HellFunction? functionBeingCalled)
     {
@@ -27,7 +26,9 @@ internal class StackFrame
 
         FunctionBeingCalled = functionBeingCalled;
 
-        FrameName = frameName ?? "scoped-frame::".CreateFrameId();
+        FrameName = frameName 
+            ?? functionBeingCalled?.FunctionName 
+            ?? "generic-frame::".CreateFrameId();
     }
 
     /// <summary>

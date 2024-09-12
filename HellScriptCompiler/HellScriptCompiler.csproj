@@ -8,6 +8,7 @@
     <PublishAot>True</PublishAot>
 	<StripSymbols>true</StripSymbols>
     <InvariantGlobalization>true</InvariantGlobalization>
+    <AssemblyName>hellc</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

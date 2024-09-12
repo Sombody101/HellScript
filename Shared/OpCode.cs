@@ -61,7 +61,7 @@ public enum Opcode : byte
     /// </summary>
     DUP,
 
-    CALL,
+    CALL_FUNC,
     HELLCALL,
 
     /// <summary>
@@ -84,32 +84,32 @@ public enum Opcode : byte
     /// <summary>
     /// Stack[A] + Stack[B] -> Stack
     /// </summary>
-    ADD,
+    BINARY_ADD,
 
     /// <summary>
     /// Stack[A] - Stack[B] -> Stack
     /// </summary>
-    SUB,
+    BINARY_SUB,
 
     /// <summary>
     /// Stack[A] * Stack[B] -> Stack
     /// </summary>
-    MULT,
+    BINARY_MULT,
 
     /// <summary>
     /// Stack[A] / Stack[B] -> Stack
     /// </summary>
-    DIVIDE,
+    BINARY_DIVIDE,
 
     /// <summary>
     /// Stack[A] % Stack[B] -> Stack
     /// </summary>
-    MOD,
+    BINARY_MODULO,
 
     /// <summary>
     /// Stack[A] -> -[Stack[S]] -> Stack
     /// </summary>
-    NEGATE,
+    BINARY_NEGATE,
 
     /* Jump operations */
 

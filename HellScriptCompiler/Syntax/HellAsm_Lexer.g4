@@ -25,6 +25,10 @@ CompilerArg
     : '.compilerdata'
     ;
 
+Local
+    : '.local'
+    ;
+
 Method
     : '.method'
     ;
@@ -141,11 +145,11 @@ fragment SChar
     ;
 
 fragment IdentifierStart
-    : [a-zA-Z_`<>*]
+    : [a-zA-Z_`<>]
     ;
 
 fragment IdentifierPart
-    : [a-zA-Z0-9_`<>*]
+    : [a-zA-Z0-9_`<>.]
     ;
 
 /* Escapes */
