@@ -12,7 +12,7 @@ internal static class BytecodeHelpers
     private const int BITS_8 = 1;
     private const int BITS_NONE = 0;
 
-    private static readonly Dictionary<string, string> opcodeNames =
+    private static readonly Dictionary<string, string> nameMap =
         new()
         {
             { "nop", nameof(Opcode.NOP) },
@@ -27,6 +27,10 @@ internal static class BytecodeHelpers
             { "ldelm", nameof(Opcode.LOAD_ELEMENT) },
             { "stelm", nameof(Opcode.STORE_ELEMENT) },
 
+            { "newinst", nameof(Opcode.NEW_INSTANCE) },
+            { "stfld", nameof(Opcode.STORE_FIELD) },
+            { "ldfld", nameof(Opcode.LOAD_FIELD) },
+
             { "stloc", nameof(Opcode.STORE_LOCAL) },
             { "ldloc", nameof(Opcode.LOAD_LOCAL) },
 
@@ -36,15 +40,19 @@ internal static class BytecodeHelpers
             { "div", nameof(Opcode.BINARY_DIVIDE) },
 
             { "jmp", nameof(Opcode.JMP) },
+            { "jnull", nameof(Opcode.JMP_NULL) },
             { "jeq", nameof(Opcode.JMP_EQ) },
-            { "jlt", nameof(Opcode.JMP_LT) },
             { "jgt", nameof(Opcode.JMP_GT) },
+            { "jlt", nameof(Opcode.JMP_LT) },
+            { "jgteq", nameof(Opcode.JMP_GTEQ) },
+            { "jlteq", nameof(Opcode.JMP_LTEQ) },
+            { "jte", nameof(Opcode.JMP_TE) },
 
             { "call", nameof(Opcode.CALL_FUNC) },
             { "hellcall", nameof(Opcode.HELLCALL) },
 
             { "ret", nameof(Opcode.RETURN_VOID) },
-            { "retc", nameof(Opcode.RETURN_VALUE) },
+            { "retv", nameof(Opcode.RETURN_VALUE) },
             { "exit", nameof(Opcode.EXIT) },
         };
 
@@ -58,7 +66,6 @@ internal static class BytecodeHelpers
         return code switch
         {
             // One byte
-            Opcode.RETURN_VALUE => BITS_8,
 
             // Two bytes
             Opcode.LOAD_LOCAL
@@ -74,17 +81,20 @@ internal static class BytecodeHelpers
                 or Opcode.LOAD_FAST
                 or Opcode.LOAD_FAST_FLOAT
 
+            // Structures
+                or Opcode.LOAD_FIELD
+                or Opcode.STORE_FIELD
+                or Opcode.NEW_INSTANCE
+
             // Branches (Not really needed; Can be hard coded)
                 or (>= Opcode.JMP and <= Opcode.JMP_LTEQ)
 
-            // Method calls
+            // Method calls (module (2 bytes) /function (2 bytes))
                 or Opcode.CALL_FUNC
-                or Opcode.HELLCALL
+                //or Opcode.HELLCALL
                     => BITS_32,
 
             #endregion Four bytes
-
-            Opcode.DEFINE_METHOD => 8, // 8 bytes are required for info
 
             // No arguments
             _ => BITS_NONE,
@@ -102,7 +112,7 @@ internal static class BytecodeHelpers
     public static bool AsOpcode(this byte code, out Opcode opcode)
     {
         opcode = (Opcode)code;
-        
+
         if (!Enum.IsDefined(typeof(Opcode), code))
             return false;
 
@@ -112,7 +122,7 @@ internal static class BytecodeHelpers
     public static Opcode AsOpcode(this string code)
     {
         // Replace the code with the opcode if the short version was used
-        if (opcodeNames.TryGetValue(code.ToLower(), out string? longCode))
+        if (nameMap.TryGetValue(code.ToLower(), out string? longCode))
             code = longCode;
 
         if (Enum.TryParse(code, true, out Opcode opcode))
@@ -126,12 +136,12 @@ internal static class BytecodeHelpers
         return code >= Opcode.JMP && code <= Opcode.JMP_LTEQ;
     }
 
-    public static byte[] EmptyByte(int length)
-    {
-        byte[] array = new byte[length];
-        for (int i = 0; i < length; ++i)
-            array[i] = 0;
-
-        return array;
-    }
+    // public static byte[] EmptyByte(int length)
+    // {
+    //     byte[] array = new byte[length];
+    //     for (int i = 0; i < length; ++i)
+    //         array[i] = 0;
+    // 
+    //     return array;
+    // }
 }

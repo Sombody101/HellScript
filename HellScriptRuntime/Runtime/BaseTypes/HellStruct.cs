@@ -1,4 +1,6 @@
-﻿namespace HellScriptRuntime.Runtime.BaseTypes;
+﻿using HellScriptShared.Bytecode;
+
+namespace HellScriptRuntime.Runtime.BaseTypes;
 
 /// <summary>
 /// Essentially a <see langword="readonly"/> <see cref="HellArray"/>
@@ -7,9 +9,10 @@ internal class HellStruct : IHellType
 {
     private readonly HellStructMetadata structMetadata;
 
-    public object Value => throw new NotImplementedException();
+    public object Value => StructureMembers;
 
-    public int TypeSignature => throw new NotImplementedException();
+    private readonly int structType;
+    public TypeSignature TypeSignature => (TypeSignature)structType;
 
     public Type? Type => throw new NotImplementedException();
 
@@ -46,14 +49,14 @@ internal class HellStruct : IHellType
         return StructureMembers[index];
     }
 
-    public int CompareTo(HellInteger? other)
+    public int CompareTo(IHellType? other)
     {
         throw new NotImplementedException();
     }
 
-    public bool Equals(HellInteger? other)
+    public bool Equals(IHellType? other)
     {
-        throw new NotImplementedException();
+        return other is not null && TypeSignature == other.TypeSignature;
     }
 
     public TypeCode GetTypeCode()
@@ -140,10 +143,4 @@ internal class HellStruct : IHellType
     {
         throw new NotImplementedException();
     }
-}
-
-public class HellStructMetadata
-{
-    public required int MemberCount { get; init; }
-    public required short[] MemberOffsets { get; init; }
 }

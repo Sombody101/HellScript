@@ -19,7 +19,7 @@ loop_body:
     ldfast [1]
     ldloc [2]
     add
-    nop
+    ; nop
     stloc [2]
     pop
 

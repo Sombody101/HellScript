@@ -1,4 +1,4 @@
-﻿#define PRINT_OPCODES
+﻿// #define PRINT_OPCODES
 
 using HellScriptRuntime.Bytecode;
 using HellScriptRuntime.Runtime.BaseTypes;
@@ -51,7 +51,7 @@ internal class HellRuntime
         {
             Opcode currentOpcode = bytecodeLoader.ReadOpcode();
 
-#if PRINT_OPCODES
+#if PRINT_OPCODES && DEBUG
             Console.WriteLine($"{bytecodeLoader.BytecodeIndex.ToString() + ':',-5} 0x{(byte)currentOpcode,-3} ({currentOpcode})");
 #endif
 
@@ -60,7 +60,7 @@ internal class HellRuntime
                 case Opcode.NOP:
                     {
                         // No operation
-                        Console.WriteLine(CurrentFrame.DataStack.First().Value);
+                        Console.WriteLine(stack.First()?.Value);
                     }
                     continue;
 
@@ -160,24 +160,10 @@ internal class HellRuntime
 
                 // Return X value(s) from the stack
                 case Opcode.RETURN_VALUE:
-                    {
-                        int valueCount = bytecodeLoader.ReadByte();
-
-                        if (valueCount > 1)
-                        {
-                            List<IHellType> buffer = [];
-
-                            for (int l = stack.Count - 1; l > valueCount; --l)
-                                buffer.Add(stack.Pop());
-
-                            return default;//  buffer.ToArray();
-                        }
-                        else
-                            return stack.Pop();
-                    }
+                        return stack.Pop();
 
                 case Opcode.RETURN_VOID:
-                    return null;
+                    return Undefined.Null;
 
                 // Exits the program, using the 
                 case Opcode.EXIT:
@@ -292,6 +278,16 @@ internal class HellRuntime
                     }
                     break;
 
+                case Opcode.JMP_TE:
+                    {
+                        int address = bytecodeLoader.LoadIntArg();
+                        IHellType?[] items = stack.Take(2).ToArray();
+
+                        if (TypeHelper.TypesMatch(items[0], items[1]))
+                            bytecodeLoader.JumpTo(position + address);
+                    }
+                    break;
+
                 /* Method operations */
 
                 case Opcode.CALL_FUNC:
@@ -301,14 +297,21 @@ internal class HellRuntime
                         HellFunction method = bytecodeLoader.DefinedFunctions[methodIndex];
 
                         StackFrame methodFrame = new(functionBeingCalled: method);
+                        
+                        for (short i = (short)(method.ParameterCount - 1); i > -1; --i)
+                            methodFrame.AddSymbol(i, stack.Pop());
+
                         Frames.Push(methodFrame);
 
                         // Start the method
                         int returnAddress = bytecodeLoader.BytecodeIndex;
-                        ExecuteBytecode(method.BytecodePosition);
-                        bytecodeLoader.JumpTo(returnAddress);
+                        IHellType? returnedValue = ExecuteBytecode(method.BytecodePosition);
 
+                        bytecodeLoader.JumpTo(returnAddress);
                         Frames.Pop();
+
+                        if (returnedValue != Undefined.Null)
+                            stack.Push(returnedValue);
                     }
                     break;
 
@@ -332,6 +335,42 @@ internal class HellRuntime
                     break;
 
                 case Opcode.STORE_GLOBAL_ARG:
+                    break;
+
+                /* Structure operations */
+
+                case Opcode.NEW_INSTANCE:
+                    {
+                        int structIndex = bytecodeLoader.LoadIntArg();
+                        var structTemplate = bytecodeLoader.MetaStructures[structIndex];
+
+                        HellStruct newStruct = new(structTemplate);
+                        stack.Push(newStruct);
+                    }
+                    break;
+
+                case Opcode.LOAD_FIELD:
+                    {
+                        int structOffset = bytecodeLoader.LoadIntArg();
+
+                        // Let it error out
+                        var hStruct = stack.First().As<HellStruct>();
+
+                        stack.Push(hStruct.GetItem(structOffset));
+                    }
+                    break;
+
+                case Opcode.STORE_FIELD:
+                    {
+                        int structOffset = bytecodeLoader.LoadIntArg();
+
+                        IHellType? item = stack.Pop();
+
+                        // Let it error out
+                        var hStruct = stack.First().As<HellStruct>();
+
+                        hStruct.SetItem(structOffset, item);
+                    }
                     break;
             }
         }

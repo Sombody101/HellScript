@@ -14,6 +14,9 @@
   <ItemGroup>
     <Compile Include="..\Shared\BytecodeHelper.cs" Link="Shared\BytecodeHelper.cs" />
     <Compile Include="..\Shared\Exceptions.cs" Link="Shared\Exceptions.cs" />
+    <Compile Include="..\Shared\HellFunction.cs" Link="Shared\HellFunction.cs" />
+    <Compile Include="..\Shared\HellGlobals.cs" Link="Shared\HellGlobals.cs" />
+    <Compile Include="..\Shared\HellStructMetadata.cs" Link="Shared\HellStructMetadata.cs" />
     <Compile Include="..\Shared\OpCode.cs" Link="Shared\OpCode.cs" />
   </ItemGroup>
 

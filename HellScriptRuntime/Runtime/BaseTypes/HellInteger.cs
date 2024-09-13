@@ -1,4 +1,5 @@
-﻿using System.Diagnostics.CodeAnalysis;
+﻿using HellScriptShared.Bytecode;
+using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
 namespace HellScriptRuntime.Runtime.BaseTypes;
@@ -14,7 +15,7 @@ internal class HellInteger : IHellType
         BigValue = value;
     }
 
-    public int TypeSignature => 0x02;
+    public TypeSignature TypeSignature => TypeSignature.Int;
 
     public Type Type => typeof(long);
 
@@ -138,6 +139,16 @@ internal class HellInteger : IHellType
     public ulong ToUInt64(IFormatProvider? provider)
     {
         return (ulong)BigValue;
+    }
+
+    public int CompareTo(IHellType? other)
+    {
+        throw new NotImplementedException();
+    }
+
+    public bool Equals(IHellType? other)
+    {
+        throw new NotImplementedException();
     }
 
     #endregion Interfaces

@@ -44,6 +44,12 @@ public interface IHellAsm_ParserVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitProgramLine([NotNull] HellAsm_Parser.ProgramLineContext context);
 	/// <summary>
+	/// Visit a parse tree produced by <see cref="HellAsm_Parser.line"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitLine([NotNull] HellAsm_Parser.LineContext context);
+	/// <summary>
 	/// Visit a parse tree produced by <see cref="HellAsm_Parser.programMetadata"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
@@ -68,23 +74,23 @@ public interface IHellAsm_ParserVisitor<Result> : IParseTreeVisitor<Result> {
 	/// <return>The visitor result.</return>
 	Result VisitStructDeclaration([NotNull] HellAsm_Parser.StructDeclarationContext context);
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="HellAsm_Parser.definitionMetadata"/>.
-	/// </summary>
-	/// <param name="context">The parse tree.</param>
-	/// <return>The visitor result.</return>
-	Result VisitDefinitionMetadata([NotNull] HellAsm_Parser.DefinitionMetadataContext context);
-	/// <summary>
 	/// Visit a parse tree produced by <see cref="HellAsm_Parser.fieldDeclaration"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
 	Result VisitFieldDeclaration([NotNull] HellAsm_Parser.FieldDeclarationContext context);
 	/// <summary>
-	/// Visit a parse tree produced by <see cref="HellAsm_Parser.line"/>.
+	/// Visit a parse tree produced by <see cref="HellAsm_Parser.fieldType"/>.
 	/// </summary>
 	/// <param name="context">The parse tree.</param>
 	/// <return>The visitor result.</return>
-	Result VisitLine([NotNull] HellAsm_Parser.LineContext context);
+	Result VisitFieldType([NotNull] HellAsm_Parser.FieldTypeContext context);
+	/// <summary>
+	/// Visit a parse tree produced by <see cref="HellAsm_Parser.definitionMetadata"/>.
+	/// </summary>
+	/// <param name="context">The parse tree.</param>
+	/// <return>The visitor result.</return>
+	Result VisitDefinitionMetadata([NotNull] HellAsm_Parser.DefinitionMetadataContext context);
 	/// <summary>
 	/// Visit a parse tree produced by <see cref="HellAsm_Parser.label"/>.
 	/// </summary>

@@ -1,7 +1,17 @@
-﻿namespace HellScriptRuntime.Runtime.BaseTypes;
+﻿using HellScriptShared.Bytecode;
+
+namespace HellScriptRuntime.Runtime.BaseTypes;
 
 internal class HellArray : IHellType
 {
+    readonly Dictionary<IHellType, IHellType?> _array;
+
+    public object Value => _array;
+
+    public TypeSignature TypeSignature => TypeSignature.Array;
+
+    public Type? Type => typeof(Dictionary<IHellType, IHellType?>);
+
     public HellArray()
     {
         _array = [];
@@ -41,14 +51,6 @@ internal class HellArray : IHellType
     {
         _array = new(maxValues);
     }
-
-    readonly Dictionary<IHellType, IHellType?> _array;
-
-    public object Value => _array;
-
-    public int TypeSignature => 0x04;
-
-    public Type? Type => typeof(Dictionary<IHellType, IHellType?>);
 
     public IHellType Clone()
     {
@@ -166,6 +168,16 @@ internal class HellArray : IHellType
     }
 
     public ulong ToUInt64(IFormatProvider? provider)
+    {
+        throw new NotImplementedException();
+    }
+
+    public int CompareTo(IHellType? other)
+    {
+        throw new NotImplementedException();
+    }
+
+    public bool Equals(IHellType? other)
     {
         throw new NotImplementedException();
     }

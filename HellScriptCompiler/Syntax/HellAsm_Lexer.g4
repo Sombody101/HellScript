@@ -77,12 +77,32 @@ BoxClose
     : ']'
     ;
 
+Dollar
+    : '$'
+    ;
+
+At
+    : '@'
+    ;
+
 Equals
     : '='
     ;
 
+Ampersand
+    : '&'
+    ;
+
+LocalReference
+    : '$' Identifier
+    ;
+
+StructReference
+    : '&' Identifier
+    ;
+
 Identifier
-    : IdentifierStart IdentifierPart*
+    : IdentifierStart (IdentifierPart* IdentifierLast)?
     ;
 
 SingleLineComment
@@ -149,7 +169,11 @@ fragment IdentifierStart
     ;
 
 fragment IdentifierPart
-    : [a-zA-Z0-9_`<>.]
+    : [a-zA-Z0-9_`<>.:]
+    ;
+
+fragment IdentifierLast
+    : [a-zA-Z0-9_`<>]
     ;
 
 /* Escapes */

@@ -4,7 +4,7 @@ namespace HellScriptCompiler;
 
 internal static class HellAsmLoader
 {
-    public static HellAsm_Parser LoadHellAsm(string hellAsmPath)
+    public static bool LoadHellAsm(string hellAsmPath, out HellAsm_Parser parser)
     {
         if (Directory.Exists(hellAsmPath))
         {
@@ -21,7 +21,7 @@ internal static class HellAsmLoader
         }
 
         HellAsm_Lexer lexer = new(new AntlrInputStream(new StreamReader(hellAsmPath)));
-        HellAsm_Parser parser = new(new CommonTokenStream(lexer));
+        parser = new(new CommonTokenStream(lexer));
 
         var listener_lexer = new ErrorListener<int>();
         var listener_parser = new ErrorListener<IToken>();
@@ -36,6 +36,6 @@ internal static class HellAsmLoader
         else
             Console.WriteLine("parse completed.");
 
-        return parser;
+        return listener_lexer.had_error || listener_parser.had_error;
     }
 }

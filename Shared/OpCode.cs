@@ -57,11 +57,15 @@ public enum Opcode : byte
     STORE_ELEMENT,
 
     /// <summary>
-    /// Stack -> Stack
+    /// Stack[A].Clone() -> Stack
     /// </summary>
     DUP,
 
+    /// <summary>
+    /// 
+    /// </summary>
     CALL_FUNC,
+
     HELLCALL,
 
     /// <summary>
@@ -180,5 +184,20 @@ public enum Opcode : byte
     /// </summary>
     STORE_GLOBAL_ARG,
 
-    DEFINE_METHOD = 255
+    /* Structures */
+
+    /// <summary>
+    /// (IHellType)(new HellStruct(MetaStructures[(<see cref='int'/>)(a*x32)])) -> Stack
+    /// </summary>
+    NEW_INSTANCE,
+
+    /// <summary>
+    /// Stack[A].[(<see cref='int'/>)(a*x32)] -> Stack
+    /// </summary>
+    LOAD_FIELD,
+
+    /// <summary>
+    /// Stack[A] -> Stack[B].[(<see cref='int'/>)(a*x32)]
+    /// </summary>
+    STORE_FIELD,
 }

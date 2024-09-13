@@ -1,9 +1,9 @@
-﻿namespace HellScriptRuntime.Runtime.BaseTypes;
+﻿using HellScriptShared.Bytecode;
+
+namespace HellScriptRuntime.Runtime.BaseTypes;
 
 // Size 8
-internal class HellString : IHellType,
-    IEquatable<HellString>,
-    IConvertible
+internal class HellString : IHellType
 {
     public HellString(string? value)
     {
@@ -14,7 +14,7 @@ internal class HellString : IHellType,
 
     public string? StringValue;
 
-    public int TypeSignature => 0x01;
+    public TypeSignature TypeSignature => TypeSignature.String;
 
     public Type Type => typeof(string);
 
@@ -167,12 +167,12 @@ internal class HellString : IHellType,
         return default;
     }
 
-    public int CompareTo(HellInteger other)
+    public int CompareTo(IHellType? other)
     {
         throw new NotImplementedException();
     }
 
-    public bool Equals(HellInteger other)
+    public bool Equals(IHellType? other)
     {
         throw new NotImplementedException();
     }

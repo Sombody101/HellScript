@@ -5,14 +5,23 @@ namespace HellScriptCompiler;
 
 internal static class Program
 {
-    private const string magicNumber = "\0\0hellscript\0\0";
-    private const string outputPath = "../../../../test/test1";
-    private const string inputPath = "../../../../test/test_source.txt";
+    // private const string magicNumber = "\0\0hellscript\0\0";
+    // private const string outputPath = "../../../../test/test1";
+    // private const string inputPath = "../../../../test/test_source.txt";
 
     static void Main(string[] args)
     {
-        if (args.Length is 0)
-            args = ["../../../../test/test.hasm"];
+#if DEBUG
+        args = ["../../../../test/test.hasm", "../../../../test/test1"];
+#else
+        if (args.Length is not 2)
+        {
+            Console.WriteLine("2 argument required: hellc <input file> <output file>");
+        }
+#endif
+
+        string input = args[0];
+        string output = args[1];
 
         if (args.Length is 0)
         {
@@ -20,19 +29,13 @@ internal static class Program
             Environment.Exit(1);
         }
 
-        string hellAssembly = args[0];
-        var loadedProgram = HellAsmLoader.LoadHellAsm(hellAssembly);
-
-        if (File.Exists(outputPath))
+        if (HellAsmLoader.LoadHellAsm(input, out var loadedProgram))
         {
-            Console.WriteLine("Clearing old binary");
-            File.Delete(outputPath);
+            Environment.Exit(-1);
         }
 
-        var binWriter = new BinaryWriter(File.OpenWrite(outputPath));
-
         // Compile the hasm file to a List<byte>
-        HellAsmGenerator visitor = HellAsmGenerator.StartProgramParse(loadedProgram, binWriter);
+        HellAsmGenerator visitor = HellAsmGenerator.StartProgramParse(loadedProgram);
 
         Console.WriteLine($"Assembly errors: {visitor.parseErrors.Count}");
         HellAsmGenerator.ParseError.PrintErrors(visitor.parseErrors);
@@ -66,6 +69,15 @@ internal static class Program
         foreach (var method in visitor.constants.methodSignatures)
         {
             Console.WriteLine($"{count++}: {method}");
+        }
+
+
+        Console.WriteLine($"\nStructures ({visitor.constants.structMetadata.Count}):");
+
+        count = 0;
+        foreach (var structure in visitor.constants.structMetadata)
+        {
+            Console.WriteLine($"{count++}: {structure}");
         }
 
         List<byte> bytecode = visitor.bytecodeBuffer;
@@ -109,6 +121,14 @@ internal static class Program
             }
         }
 
+        if (File.Exists(output))
+        {
+            Console.WriteLine("\nClearing old binary");
+            File.Delete(output);
+        }
+
+        var binWriter = new BinaryWriter(File.OpenWrite(output), Encoding.UTF8);
+
         Console.WriteLine("\nWriting binary to file...");
 
         /* Write it out to the file */
@@ -116,10 +136,11 @@ internal static class Program
         // Magic number
         binWriter.Write(Encoding.ASCII.GetBytes(BytecodeHelpers.MagicNumber));
 
+        // Push the constants, structure table, and methods table to the file
         visitor.constants.DumpConstantValues(binWriter);
 
         // Write the bytecode
-        binWriter.Write(visitor.bytecodeBuffer.ToArray());
+        binWriter.Write([.. visitor.bytecodeBuffer]);
 
         Console.WriteLine($"Wrote {binWriter.BaseStream.Length} bytes");
     }

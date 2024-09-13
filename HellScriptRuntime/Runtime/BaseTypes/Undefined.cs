@@ -1,41 +1,30 @@
 ﻿using HellScriptShared.Bytecode;
-using System.Text;
 
 namespace HellScriptRuntime.Runtime.BaseTypes;
 
-internal class HellException : Exception, IHellType
+internal sealed class Undefined : IHellType
 {
-    public HellException()
-    { }
+    public static readonly Undefined Null = new();
 
-    public object Value => this;
+    public object Value => null;
 
-    public TypeSignature TypeSignature => TypeSignature.Exception;
+    public TypeSignature TypeSignature => TypeSignature.Undefined;
 
-    public Type? Type => typeof(HellException);
+    public Type? Type => null;
 
-    internal static string CreateStackTrace(Stack<StackFrame> callStack)
+    public IHellType Clone()
     {
-        StringBuilder sb = new();
+        throw new NotImplementedException();
+    }
 
-        foreach (var frame in callStack)
-        {
-            var function = frame.FunctionBeingCalled;
+    public int CompareTo(IHellType? other)
+    {
+        throw new NotImplementedException();
+    }
 
-            string functionName;
-            if (function is null)
-            {
-                functionName = "main";
-            }
-            else
-            {
-                functionName = $"{function.Name} [0x{function.BytecodePosition}]";
-            }
-
-            sb.AppendLine($"at {frame.FrameName} -> {functionName}");
-        }
-
-        return sb.ToString();
+    public bool Equals(IHellType? other)
+    {
+        throw new NotImplementedException();
     }
 
     public TypeCode GetTypeCode()
@@ -119,21 +108,6 @@ internal class HellException : Exception, IHellType
     }
 
     public ulong ToUInt64(IFormatProvider? provider)
-    {
-        throw new NotImplementedException();
-    }
-
-    IHellType IHellType.Clone()
-    {
-        throw new NotImplementedException();
-    }
-
-    int IComparable<IHellType>.CompareTo(IHellType? other)
-    {
-        throw new NotImplementedException();
-    }
-
-    bool IEquatable<IHellType>.Equals(IHellType? other)
     {
         throw new NotImplementedException();
     }

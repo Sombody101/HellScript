@@ -1,4 +1,5 @@
 ﻿using HellScriptRuntime.Runtime.BaseTypes;
+using HellScriptShared.Bytecode;
 using System.Runtime.InteropServices;
 
 namespace HellScriptRuntime.Runtime;
@@ -26,8 +27,8 @@ internal class StackFrame
 
         FunctionBeingCalled = functionBeingCalled;
 
-        FrameName = frameName 
-            ?? functionBeingCalled?.FunctionName 
+        FrameName = frameName
+            ?? functionBeingCalled?.Name
             ?? "generic-frame::".CreateFrameId();
     }
 

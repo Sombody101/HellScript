@@ -1,0 +1,15 @@
+.program 
+{
+    
+}
+
+.struct string {}
+
+.method string::.ctor(
+    .local source_str
+) 
+{
+
+}
+
+.struct int {}

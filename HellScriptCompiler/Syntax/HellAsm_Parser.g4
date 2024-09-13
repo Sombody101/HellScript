@@ -17,6 +17,12 @@ program
 programLine
     : line
     | methodDeclaration
+    | structDeclaration
+    ;
+
+line
+    : opcode
+    | label
     ;
 
 programMetadata
@@ -28,24 +34,23 @@ metadataSet
     ;
 
 methodDeclaration
-    : Method Identifier '(' ArgCount? IntegerConstant ')' definitionMetadata? '{' line* '}'
+    : Method Identifier '(' fieldDeclaration* ')' definitionMetadata? '{' line* '}'
     ;
 
 structDeclaration
     : Structure Identifier '{' fieldDeclaration* '}'
     ;
 
+fieldDeclaration
+    : Local Identifier fieldType?
+    ;
+
+fieldType
+    : At Identifier
+    ;
+
 definitionMetadata
     : CompilerArg '{' metadataSet* '}'
-    ;
-
-fieldDeclaration
-    : Local Identifier
-    ;
-
-line
-    : opcode
-    | label
     ;
 
 label
@@ -61,7 +66,9 @@ argumentList
     ;
 
 argument
-    : StringConstant
+    : LocalReference
+    | StructReference
+    | StringConstant
     | FastConstant
     | FloatingConstant
     | IntegerConstant

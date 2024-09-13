@@ -1,12 +1,14 @@
-﻿namespace HellScriptRuntime.Runtime.BaseTypes;
+﻿using HellScriptShared.Bytecode;
 
-internal interface IHellType : IComparable<HellInteger>,
-    IEquatable<HellInteger>,
+namespace HellScriptRuntime.Runtime.BaseTypes;
+
+internal interface IHellType : IComparable<IHellType>,
+    IEquatable<IHellType>,
     IConvertible
 {
     public object Value { get; }
 
-    public int TypeSignature { get; }
+    public TypeSignature TypeSignature { get; }
 
     public Type? Type { get; }
 

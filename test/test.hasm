@@ -1,34 +1,50 @@
-.program {}
-
-; call wanted_method()
-; call wanted_method()
-; call wanted_method()
-; call wanted_method()
-call wanted_method()
-call exit_method()
-
-.method wanted_method(0)
+.program 
 {
-    ldfast [214748364]
-    nop
-    call exit_method()
-    ret
+    preload = ""
 }
 
-.method exit_method(0)
-{
+.struct t {
+    .local player @int
+    .local months @int
+    .local days_played @int
+}
+
+.method t::.ctor() {
+    newinst &t
+    ldstr "happy thoughts"
+    stfld &t::player
     ldfast [69]
-    nop
-    jmp [exit]
-    stelm
-    exit:
-    ret
+    stfld &t::months
+    ldfast [69]
+    stfld &t::days_played
+    retv
 }
 
-.method NOT_TO_RUN(0)
+.method something(
+    .local my_t @T
+)
 {
-    exit
+    ldloc [my_t]
+    nop
+    ldfld &t::player
+    nop
+    pop
+    ldfld &t::months
+    nop
+    pop
+    ldfld &t::days_played
+    nop
     ret
 }
 
-exit
+call t::.ctor()
+ldfld [0]
+nop
+pop
+ldfld [1]
+nop
+pop
+ldfld [2]
+nop
+
+; call something()

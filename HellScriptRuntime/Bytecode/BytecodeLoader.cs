@@ -1,27 +1,29 @@
-﻿// Anything under 128k is completely loaded
-//#define BUFFER_128k
-//#define BUFFER_256k
-//#define BUFFER_512k
+﻿#define BUFFER_ALL // Overrides any other option
+// #define BUFFER_128k
+// #define BUFFER_256k
+#define BUFFER_512k
 
-//#define BUFFER_1m
-//#define BUFFER_5m
-#define BUFFER_10m
+// #define BUFFER_1m
+// #define BUFFER_5m
+// #define BUFFER_10m
 // #define BUFFER_20m
 // #define BUFFER_30m
 
 using HellScriptRuntime.Exceptions;
-using HellScriptRuntime.Runtime.BaseTypes;
 using HellScriptShared.Bytecode;
 using HellScriptShared.Exceptions;
 using System.Numerics;
-using System.Reflection.PortableExecutable;
 using System.Text;
 
 namespace HellScriptRuntime.Bytecode;
 
 internal class BytecodeLoader : IDisposable
 {
-    private const int bufferSize = 1024 *
+    private const int bufferSize =
+#if BUFFER_ALL
+        -1;
+#else
+        1024 *
 #if BUFFER_128k
     128;
 #elif BUFFER_256k
@@ -40,8 +42,10 @@ internal class BytecodeLoader : IDisposable
     1024 * 30;
 #endif
 
-    private BinaryReader? binaryReader;
-    private byte[] bytecode;
+#endif
+
+    private readonly BinaryReader? binaryReader;
+    private readonly byte[] bytecode;
     private int currentBytecodeIndex = 0;
 
     public int BytecodeIndex => currentBytecodeIndex;
@@ -51,18 +55,28 @@ internal class BytecodeLoader : IDisposable
     private readonly BigInteger[] IntegerConstants;
     // private readonly double[] FloatingConstants;
 
+    public readonly HellStructMetadata[] MetaStructures;
     public readonly HellFunction[] DefinedFunctions;
 
     public BytecodeLoader(string filePath)
     {
+        /*
+         * Binary files are loaded in this order:
+         *      Strings
+         *      BigIntegers
+         *      BigDecimals
+         *      Methods table (the method bodies are still in the bytecode, this just points to them)
+         *      Structure table (structures are just a layout for a readonly array)
+         */
+
         if (!File.Exists(filePath))
         {
             throw new FileNotFoundException($"Failed to find the script file '{filePath}'");
         }
 
-        binaryReader = new(File.OpenRead(filePath));
+        binaryReader = new(File.OpenRead(filePath), Encoding.UTF8);
 
-        string loadedMagic = Encoding.Default.GetString(binaryReader.ReadBytes(BytecodeHelpers.MagicNumber.Length));
+        string loadedMagic = Encoding.ASCII.GetString(binaryReader.ReadBytes(BytecodeHelpers.MagicNumber.Length));
         if (loadedMagic != BytecodeHelpers.MagicNumber)
         {
             // This isn't a hellscript binary file
@@ -71,58 +85,41 @@ internal class BytecodeLoader : IDisposable
 
         /* Load string constants */
 
-        int LoadInt()
-        {
-            byte[] data = binaryReader.ReadBytes(sizeof(int));
-            return BitConverter.ToInt32(data);
-        }
-
         // Get the number of strings to load
-        int length = LoadInt();
-        StringConstants = new string[length];
+        int tableLen = binaryReader.ReadInt32();
+        StringConstants = new string[tableLen];
 
-        for (int i = 0; i < length; ++i)
+        for (int i = 0; i < tableLen; ++i)
         {
-            int stringLength = LoadInt();
-            byte[] stringBytes = binaryReader.ReadBytes(stringLength * 2);
-
-            StringConstants[i] = Encoding.Unicode.GetString(stringBytes);
+            StringConstants[i] = binaryReader.ReadString();
         }
 
         /* Load numerical constants */
-        length = LoadInt();
-        IntegerConstants = new BigInteger[length];
-        
-        for (int i = 0; i < length; ++i) 
+        tableLen = binaryReader.ReadInt32();
+        IntegerConstants = new BigInteger[tableLen];
+
+        for (int i = 0; i < tableLen; ++i)
         {
-            int bigLength = LoadInt();
+            int bigLength = binaryReader.ReadInt32();
 
             byte[] bytes = binaryReader.ReadBytes(bigLength);
             IntegerConstants[i] = new BigInteger(bytes);
         }
 
         /* Load functions table */
-        int tableLen = LoadInt();
-        DefinedFunctions = new HellFunction[tableLen];
+        DefinedFunctions = HellFunction.GetFunctionData(binaryReader);
 
-        for (int i = 0; i < tableLen; ++i)
-        {
-            // Location
-            int functionIndex = LoadInt();
+        /* Load structure definitions */
+        // Use the shared deserialization method
+        MetaStructures = HellStructMetadata.ReadAllFromStream(binaryReader);
 
-            // Name
-            int stringLength = LoadInt();
-            byte[] stringBytes = binaryReader.ReadBytes(stringLength * 2);
-            string functionName = Encoding.Unicode.GetString(stringBytes);
-
-            // Arg count
-            byte[] data = binaryReader.ReadBytes(sizeof(short));
-            short argCount = BitConverter.ToInt16(data);
-
-            DefinedFunctions[i] = new HellFunction(functionName, argCount, functionIndex);
-        }
-
-        bytecode = binaryReader.ReadBytes(bufferSize);
+        // Load the rest of the bytecode (the actual instructions and methods)
+        bytecode =
+#if BUFFER_ALL
+            binaryReader.ReadBytes((int)binaryReader.BaseStream.Length - (int)binaryReader.BaseStream.Position);
+#else
+            binaryReader.ReadBytes(bufferSize);
+#endif
 
         if (binaryReader.BaseStream.Length < bufferSize)
         {
@@ -211,5 +208,6 @@ internal class BytecodeLoader : IDisposable
     public void Dispose()
     {
         binaryReader?.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

@@ -7,11 +7,11 @@ using StackFrame = HellScriptRuntime.Runtime.StackFrame;
 
 namespace HellScriptRuntime;
 
-internal sealed class Program
+internal static class Program
 {
     private const string inputFile = "../../../../test/test1";
 
-    private static Stopwatch sw;
+    private static Stopwatch? sw;
 
     static void Main(string[] args)
     {
@@ -66,6 +66,10 @@ internal sealed class Program
 
             case StackOverflowException so:
                 Console.WriteLine($"Stack overflow: {so.Message}");
+                break;
+
+            case InvalidCastException ce:
+                Console.WriteLine($"Invalid values going from stack to operation: {ce.Message}");
                 break;
 
             default:
