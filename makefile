@@ -9,32 +9,33 @@ HS_COMPILER := ./HellScriptCompiler/HellScriptCompiler.csproj
 
 BUILD_DIR := ./aot-publish
 
-.PHONY: build
+.PHONY: all
 
-build: build-$(detected_OS)
+# Not literal "all" items, just both items for the current OS
+all: $(detected_OS)
 
-build-win:
-	$(MAKE) build-runtime-win build-compiler-win
+win:
+	$(MAKE) runtime-win compiler-win
 
-build-linux:
-	$(MAKE) build-runtime-linux build-compiler-linux
+linux:
+	$(MAKE) runtime-linux compiler-linux
 
 # Runtime
 
-build-runtime: build-runtime-$(detected_OS)
+runtime: runtime-$(detected_OS)
 
-build-runtime-win:
+runtime-win:
 	dotnet publish $(HS_RUNTIME) -r win-x64 -c Release -o $(BUILD_DIR) --nologo -v q --property WarningLevel=0 /clp:ErrorsOnly
 
-build-runtime-linux:
+runtime-linux:
 	dotnet publish $(HS_RUNTIME) -r linux-x64 -c Release -o $(BUILD_DIR) --nologo -v q --property WarningLevel=0 /clp:ErrorsOnly
 
 # Compiler
 
-build-compiler: build-compiler-$(detected_OS)
+compiler: compiler-$(detected_OS)
 
-build-compiler-win:
+compiler-win:
 	dotnet publish $(HS_COMPILER) -r win-x64 -c Release -o $(BUILD_DIR) --nologo -v q --property WarningLevel=0 /clp:ErrorsOnly
 
-build-compiler-linux:
+compiler-linux:
 	dotnet publish $(HS_COMPILER) -r linux-x64 -c Release -o $(BUILD_DIR) --nologo -v q --property WarningLevel=0 /clp:ErrorsOnly
