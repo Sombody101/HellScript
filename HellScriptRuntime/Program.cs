@@ -1,6 +1,7 @@
 ﻿using HellScriptRuntime.Bytecode;
 using HellScriptRuntime.Runtime;
 using HellScriptRuntime.Runtime.BaseTypes;
+using HellScriptRuntime.Runtime.BaseTypes.Numbers;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using StackFrame = HellScriptRuntime.Runtime.StackFrame;
@@ -26,12 +27,13 @@ internal static class Program
 
         try
         {
+            // Load the bytecode
             var byteLoader = new BytecodeLoader(input);
 
             var runtime = new HellRuntime(args, byteLoader);
             frames = runtime.Frames;
 
-            // Star the bytecode at 0 (Entry)
+            // Start the bytecode at 0 (Entry)
             IHellType? returnedObject = runtime.ExecuteBytecode(0);
 
             Exit(returnedObject);
@@ -52,7 +54,9 @@ internal static class Program
             Environment.Exit(0);
         }
 
-        Environment.Exit(exitCode.ToInt32(null));
+        int code = exitCode.As<IHellNumber>().ToInt32();
+
+        Environment.Exit(code);
     }
 
     [DoesNotReturn]

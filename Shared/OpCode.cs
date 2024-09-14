@@ -43,6 +43,21 @@ public enum Opcode : byte
 
     /// <summary>
     /// (IHellType)(new HellArray()) -> Stack
+    /// 
+    /// <list type="bullet|number|table">
+    ///    <item>
+    ///        <term>&gt;0</term>
+    ///        <description>Fast value for the length of the array (as <see langword="int"/> casted to <see langword="long"/>).</description>
+    ///    </item>
+    ///    <item>
+    ///        <term>-1</term>
+    ///        <description>Use the first value on the stack as the array length, value *MUST* be a HellInteger (<see langword="long"/>) (<see langword="length"/> &gt; 0 &amp;&amp; <see langword="length"/> &lt; 0x7FFFFFFFFFFFFFFF).</description>
+    ///    </item>
+    ///    <item>
+    ///         <term>-2</term>
+    ///         <description>This is a dictionary; Use arbitrary length (Expands as needed).</description>
+    ///    </item>
+    /// </list>
     /// </summary>
     CREATE_ARRAY,
 

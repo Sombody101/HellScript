@@ -1,16 +1,13 @@
 ﻿using System.Globalization;
 using System.Numerics;
 using System.Runtime.InteropServices;
-using System.Runtime.Serialization;
-using System.Security.Permissions;
 
-namespace HellScriptRuntime.Runtime.BaseTypes.Numerics;
+namespace HellScriptRuntime.Runtime.BaseTypes.Numbers;
 
 public struct BigDecimal
     : IComparable,
     IComparable<BigDecimal>,
-    IEquatable<BigDecimal>,
-    ISerializable
+    IEquatable<BigDecimal>
 {
     /// <summary>
     /// The decimal separator to use in current culture.
@@ -45,14 +42,14 @@ public struct BigDecimal
 
     private const int DoubleMaxScale = 308;
     private static readonly BigInteger s_bnDoublePrecision = BigInteger.Pow(10, DoubleMaxScale);
-    private static readonly BigInteger s_bnDoubleMaxValue = (BigInteger)Double.MaxValue;
-    private static readonly BigInteger s_bnDoubleMinValue = (BigInteger)Double.MinValue;
+    private static readonly BigInteger s_bnDoubleMaxValue = (BigInteger)double.MaxValue;
+    private static readonly BigInteger s_bnDoubleMinValue = (BigInteger)double.MinValue;
 
     [StructLayout(LayoutKind.Explicit)]
     internal struct DecimalUInt32
     {
         [FieldOffset(0)]
-        public Decimal dec;
+        public decimal dec;
         [FieldOffset(0)]
         public int flags;
     }
@@ -60,8 +57,8 @@ public struct BigDecimal
     private const int DecimalSignMask = unchecked((int)0x80000000);
     private const int DecimalMaxScale = 28;
     private static readonly BigInteger s_bnDecimalPrecision = BigInteger.Pow(10, DecimalMaxScale);
-    private static readonly BigInteger s_bnDecimalMaxValue = (BigInteger)Decimal.MaxValue;
-    private static readonly BigInteger s_bnDecimalMinValue = (BigInteger)Decimal.MinValue;
+    private static readonly BigInteger s_bnDecimalMaxValue = (BigInteger)decimal.MaxValue;
+    private static readonly BigInteger s_bnDecimalMinValue = (BigInteger)decimal.MinValue;
 
     #endregion Values for converting to/from double/decimal.
 
@@ -126,7 +123,7 @@ public struct BigDecimal
         return this - GetWholePart();
     }
 
-    public override bool Equals(Object obj)
+    public override bool Equals(object obj)
     {
         if (obj == null)
             return false;
@@ -151,7 +148,7 @@ public struct BigDecimal
     /// </summary>
     /// <param name="obj"></param>
     /// <returns></returns>
-    int IComparable.CompareTo(Object obj)
+    int IComparable.CompareTo(object obj)
     {
         if (obj == null)
             return 1;
@@ -176,7 +173,7 @@ public struct BigDecimal
     /// 
     /// </summary>
     /// <returns></returns>
-    public override String ToString()
+    public override string ToString()
     {
         var s = BigInteger.Abs(_bigIntValue).ToString("R");
 
@@ -197,9 +194,9 @@ public struct BigDecimal
     /// </summary>
     /// <param name="other"></param>
     /// <returns></returns>
-    public Boolean Equals(BigDecimal other)
+    public bool Equals(BigDecimal other)
     {
-        if (Object.ReferenceEquals(other, null))
+        if (ReferenceEquals(other, null))
             return false;
 
         return _bigIntValue == other._bigIntValue
@@ -248,11 +245,11 @@ public struct BigDecimal
     /// <param name="value"></param>
     public BigDecimal(double value)
     {
-        if (Double.IsNaN(value))
+        if (double.IsNaN(value))
         {
             throw new ArgumentException("Argument is not a number", "value");
         }
-        else if (Double.IsInfinity(value))
+        else if (double.IsInfinity(value))
         {
             throw new ArgumentException("Argument is infinity", "value");
         }
@@ -298,7 +295,7 @@ public struct BigDecimal
     public BigDecimal(decimal value)
     {
         int[] bits = decimal.GetBits(value);
-        if (bits == null || bits.Length != 4 || (bits[3] & ~(DecimalSignMask | DecimalScaleMask)) != 0 || (bits[3] & DecimalScaleMask) > (28 << 16))
+        if (bits == null || bits.Length != 4 || (bits[3] & ~(DecimalSignMask | DecimalScaleMask)) != 0 || (bits[3] & DecimalScaleMask) > 28 << 16)
         {
             throw new ArgumentException("invalid Decimal", "value");
         }
@@ -311,8 +308,8 @@ public struct BigDecimal
         //
         // Build up the numerator
         //
-        ulong ul = (((ulong)(uint)bits[2]) << 32) | ((ulong)(uint)bits[1]);   // (hi    << 32) | (mid)
-        _bigIntValue = (new BigInteger(ul) << 32) | (uint)bits[0];             // (hiMid << 32) | (low)
+        ulong ul = (ulong)(uint)bits[2] << 32 | (uint)bits[1];   // (hi    << 32) | (mid)
+        _bigIntValue = new BigInteger(ul) << 32 | (uint)bits[0];             // (hiMid << 32) | (low)
 
         bool isNegative = (bits[3] & DecimalSignMask) != 0;
         if (isNegative)
@@ -340,11 +337,11 @@ public struct BigDecimal
     /// <returns></returns>
     public static BigDecimal Parse(string value)
     {
-        var bigInt = BigInteger.Parse(value.Replace(BigDecimal.DecimalSeparator, ""));
+        var bigInt = BigInteger.Parse(value.Replace(DecimalSeparator, ""));
         var decimals = 0;
 
-        if (value.Contains(BigDecimal.DecimalSeparator))
-            decimals = value.Length - value.IndexOf(BigDecimal.DecimalSeparator) - 1;
+        if (value.Contains(DecimalSeparator))
+            decimals = value.Length - value.IndexOf(DecimalSeparator) - 1;
 
         return new BigDecimal(bigInt, decimals);
     }
@@ -356,7 +353,7 @@ public struct BigDecimal
     /// <returns></returns>
     public static BigDecimal Abs(BigDecimal bd)
     {
-        return (bd._bigIntValue.Sign < 0 ? -bd : bd);
+        return bd._bigIntValue.Sign < 0 ? -bd : bd;
     }
 
     /// <summary>
@@ -426,11 +423,11 @@ public struct BigDecimal
             //
             // Anyting to the power of zero is one.
             //
-            return BigDecimal.One;
+            return One;
         }
         else if (exponent.Sign < 0)
         {
-            if (baseValue == BigDecimal.Zero)
+            if (baseValue == Zero)
             {
                 throw new ArgumentException("cannot raise zero to a negative power", "baseValue");
             }
@@ -438,7 +435,7 @@ public struct BigDecimal
             //
             // n^(-e) -> (1/n)^e
             //
-            baseValue = BigDecimal.One / baseValue;
+            baseValue = One / baseValue;
             exponent = BigInteger.Negate(exponent);
         }
 
@@ -512,12 +509,12 @@ public struct BigDecimal
 
     public static BigDecimal operator ++(BigDecimal bd)
     {
-        return bd + BigDecimal.One;
+        return bd + One;
     }
 
     public static BigDecimal operator --(BigDecimal bd)
     {
-        return bd - BigDecimal.One;
+        return bd - One;
     }
 
     public static BigDecimal operator +(BigDecimal bd1, BigDecimal bd2)
@@ -595,44 +592,44 @@ public struct BigDecimal
     // 
     #region Explicit conversions from BigDecimal
 
-    public static explicit operator SByte(BigDecimal value)
+    public static explicit operator sbyte(BigDecimal value)
     {
-        return (SByte)BigInteger.Divide(value._bigIntValue, (BigInteger)Math.Pow(10, value._decimalCount - 1));
+        return (sbyte)BigInteger.Divide(value._bigIntValue, (BigInteger)Math.Pow(10, value._decimalCount - 1));
     }
 
-    public static explicit operator UInt16(BigDecimal value)
+    public static explicit operator ushort(BigDecimal value)
     {
-        return (UInt16)BigInteger.Divide(value._bigIntValue, (BigInteger)Math.Pow(10, value._decimalCount - 1));
+        return (ushort)BigInteger.Divide(value._bigIntValue, (BigInteger)Math.Pow(10, value._decimalCount - 1));
     }
 
-    public static explicit operator UInt32(BigDecimal value)
+    public static explicit operator uint(BigDecimal value)
     {
-        return (UInt32)BigInteger.Divide(value._bigIntValue, (BigInteger)Math.Pow(10, value._decimalCount - 1));
+        return (uint)BigInteger.Divide(value._bigIntValue, (BigInteger)Math.Pow(10, value._decimalCount - 1));
     }
 
-    public static explicit operator UInt64(BigDecimal value)
+    public static explicit operator ulong(BigDecimal value)
     {
-        return (UInt64)BigInteger.Divide(value._bigIntValue, (BigInteger)Math.Pow(10, value._decimalCount - 1));
+        return (ulong)BigInteger.Divide(value._bigIntValue, (BigInteger)Math.Pow(10, value._decimalCount - 1));
     }
 
-    public static explicit operator Byte(BigDecimal value)
+    public static explicit operator byte(BigDecimal value)
     {
-        return (Byte)BigInteger.Divide(value._bigIntValue, (BigInteger)Math.Pow(10, value._decimalCount - 1));
+        return (byte)BigInteger.Divide(value._bigIntValue, (BigInteger)Math.Pow(10, value._decimalCount - 1));
     }
 
-    public static explicit operator Int16(BigDecimal value)
+    public static explicit operator short(BigDecimal value)
     {
-        return (Int16)BigInteger.Divide(value._bigIntValue, (BigInteger)Math.Pow(10, value._decimalCount - 1));
+        return (short)BigInteger.Divide(value._bigIntValue, (BigInteger)Math.Pow(10, value._decimalCount - 1));
     }
 
-    public static explicit operator Int32(BigDecimal value)
+    public static explicit operator int(BigDecimal value)
     {
-        return (Int32)BigInteger.Divide(value._bigIntValue, (BigInteger)Math.Pow(10, value._decimalCount - 1));
+        return (int)BigInteger.Divide(value._bigIntValue, (BigInteger)Math.Pow(10, value._decimalCount - 1));
     }
 
-    public static explicit operator Int64(BigDecimal value)
+    public static explicit operator long(BigDecimal value)
     {
-        return (Int64)BigInteger.Divide(value._bigIntValue, (BigInteger)Math.Pow(10, value._decimalCount - 1));
+        return (long)BigInteger.Divide(value._bigIntValue, (BigInteger)Math.Pow(10, value._decimalCount - 1));
     }
 
     public static explicit operator BigInteger(BigDecimal value)
@@ -647,7 +644,7 @@ public struct BigDecimal
         // values ranging from negative 3.402823e38 to positive 3.402823e38      
         // values that do not fit into this range are returned as Infinity
         //
-        return (float)((double)value);
+        return (float)(double)value;
     }
 
     public static explicit operator double(BigDecimal value)
@@ -665,9 +662,9 @@ public struct BigDecimal
         //
         // Scale the numerator to preseve the fraction part through the integer division
         //
-        BigInteger denormalized = (value._bigIntValue * s_bnDoublePrecision) / factor;
+        BigInteger denormalized = value._bigIntValue * s_bnDoublePrecision / factor;
         if (denormalized.IsZero)
-            return (value.Sign < 0) ? BitConverter.Int64BitsToDouble(unchecked((long)0x8000000000000000)) : 0d; // underflow to -+0
+            return value.Sign < 0 ? BitConverter.Int64BitsToDouble(unchecked((long)0x8000000000000000)) : 0d; // underflow to -+0
 
         double result = 0;
         bool isDouble = false;
@@ -692,7 +689,7 @@ public struct BigDecimal
         }
 
         if (!isDouble)
-            return (value.Sign < 0) ? Double.NegativeInfinity : Double.PositiveInfinity;
+            return value.Sign < 0 ? double.NegativeInfinity : double.PositiveInfinity;
         else
             return result;
     }
@@ -707,19 +704,19 @@ public struct BigDecimal
         var factor = BigInteger.Pow(10, value._decimalCount);
         if (SafeCastToDecimal(value._bigIntValue) && SafeCastToDecimal(factor))
         {
-            return (Decimal)value._bigIntValue / (Decimal)factor;
+            return (decimal)value._bigIntValue / (decimal)factor;
         }
 
         // 
         // Scale the numerator to preseve the fraction part through the integer division
         // 
-        BigInteger denormalized = (value._bigIntValue * s_bnDecimalPrecision) / factor;
+        BigInteger denormalized = value._bigIntValue * s_bnDecimalPrecision / factor;
         if (denormalized.IsZero)
         {
             // 
             // Underflow - fraction is too small to fit in a decimal
             //
-            return Decimal.Zero;
+            return decimal.Zero;
         }
         for (int scale = DecimalMaxScale; scale >= 0; scale--)
         {
@@ -730,8 +727,8 @@ public struct BigDecimal
             else
             {
                 DecimalUInt32 dec = new DecimalUInt32();
-                dec.dec = (Decimal)denormalized;
-                dec.flags = (dec.flags & ~DecimalScaleMask) | (scale << 16);
+                dec.dec = (decimal)denormalized;
+                dec.flags = dec.flags & ~DecimalScaleMask | scale << 16;
                 return dec.dec;
             }
         }
@@ -807,45 +804,6 @@ public struct BigDecimal
     }
 
     #endregion Implicit conversions to BigDecimal
-
-    // 
-    // 
-    // 
-    #region Serialization methods 
-
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="info"></param>
-    /// <param name="context"></param>
-    [SecurityPermission(SecurityAction.LinkDemand, Flags = SecurityPermissionFlag.SerializationFormatter)]
-    void ISerializable.GetObjectData(SerializationInfo info, StreamingContext context)
-    {
-        if (info == null)
-        {
-            throw new ArgumentNullException("info");
-        }
-
-        info.AddValue("BigIntValue", _bigIntValue);
-        info.AddValue("DecimalCount", _decimalCount);
-    }
-
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="info"></param>
-    /// <param name="context"></param>
-    BigDecimal(SerializationInfo info, StreamingContext context)
-    {
-        if (info == null)
-        {
-            throw new ArgumentNullException("info");
-        }
-
-        _bigIntValue = (BigInteger)info.GetValue("BigIntValue", typeof(BigInteger));
-        _decimalCount = (int)info.GetValue("DecimalCount", typeof(int));
-    }
-    #endregion Serialization methods 
 
     // 
     // Private helper methods
@@ -952,7 +910,7 @@ public struct BigDecimal
         {
             // NaN or Infinite.
             isFinite = false;
-            exp = Int32.MaxValue;
+            exp = int.MaxValue;
         }
         else
         {
@@ -1013,7 +971,7 @@ public struct BigDecimal
             else
             {
                 // Mask off the implicit high bit
-                du.uu = (man & 0x000FFFFFFFFFFFFF) | ((ulong)exp << 52);
+                du.uu = man & 0x000FFFFFFFFFFFFF | (ulong)exp << 52;
             }
         }
 

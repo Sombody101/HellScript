@@ -16,6 +16,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="Runtime\BaseTypes\Numbers\BigDecimal.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Compile Include="..\Shared\BytecodeHelper.cs" Link="Shared\BytecodeHelper.cs" />
     <Compile Include="..\Shared\Exceptions.cs" Link="Shared\Exceptions.cs" />
     <Compile Include="..\Shared\HellFunction.cs" Link="Shared\HellFunction.cs" />

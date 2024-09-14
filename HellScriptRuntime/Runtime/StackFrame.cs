@@ -27,9 +27,7 @@ internal class StackFrame
 
         FunctionBeingCalled = functionBeingCalled;
 
-        FrameName = frameName
-            ?? functionBeingCalled?.Name
-            ?? "generic-frame::".CreateFrameId();
+        FrameName = frameName ?? functionBeingCalled?.Name ?? "<generic>";
     }
 
     /// <summary>

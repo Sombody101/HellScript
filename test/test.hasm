@@ -1,50 +1,49 @@
-.program 
-{
-    preload = ""
-}
+.program {}
 
-.struct t {
-    .local player @int
-    .local months @int
-    .local days_played @int
-}
+ldfast [10_000_000]
+newarr [-1] ; -1 tells the runtime to use the stack value as the length
 
-.method t::.ctor() {
-    newinst &t
-    ldstr "happy thoughts"
-    stfld &t::player
-    ldfast [69]
-    stfld &t::months
-    ldfast [69]
-    stfld &t::days_played
-    retv
-}
+ldfast [0]
+stloc [0]
 
-.method something(
-    .local my_t @T
-)
-{
-    ldloc [my_t]
-    nop
-    ldfld &t::player
-    nop
-    pop
-    ldfld &t::months
-    nop
-    pop
-    ldfld &t::days_played
-    nop
-    ret
-}
+jmp [loop_check]
 
-call t::.ctor()
-ldfld [0]
-nop
-pop
-ldfld [1]
-nop
-pop
-ldfld [2]
-nop
+loop_body:
+    ldloc [0]
+    ldfast [1]
+    add
+    ; nop ; Jimmy rigged "print" (does not pop value)
+    stloc [0]
 
-; call something()
+loop_check:
+    ldloc [0]
+    ldfast [10_000_000]
+
+    jlt [loop_body]
+
+exit
+
+; C# representation
+; int[] local = new int[10_000];
+; 
+; for (int i = 0; i < 10_000; ++i)
+; { }
+
+; .NET ilasm representation
+; IL_0000: ldc.i4 10000
+; IL_0005: newarr [mscorlib]System.Int32
+; IL_000a: pop
+; IL_000b: ldc.i4.0
+; IL_000c: stloc.0
+; // sequence point: hidden
+; IL_000d: br.s IL_0013
+; // loop start (head: IL_0013)
+;     IL_000f: ldloc.0
+;     IL_0010: ldc.i4.1
+;     IL_0011: add
+;     IL_0012: stloc.0
+;     
+;     IL_0013: ldloc.0
+;     IL_0014: ldc.i4 10000
+;     IL_0019: blt.s IL_000f
+; // end loop

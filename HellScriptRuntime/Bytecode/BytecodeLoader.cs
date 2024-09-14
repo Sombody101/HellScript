@@ -1,7 +1,10 @@
 ﻿#define BUFFER_ALL // Overrides any other option
+
+// At some point I plan on making this load sections of the file (to reduce memory usage)
+// For now, use BUFFER_ALL (otherwise, it will load selected size and never load more of the file)
 // #define BUFFER_128k
 // #define BUFFER_256k
-#define BUFFER_512k
+// #define BUFFER_512k
 
 // #define BUFFER_1m
 // #define BUFFER_5m
@@ -17,7 +20,7 @@ using System.Text;
 
 namespace HellScriptRuntime.Bytecode;
 
-internal class BytecodeLoader : IDisposable
+internal sealed class BytecodeLoader : IDisposable
 {
     private const int bufferSize =
 #if BUFFER_ALL
@@ -46,6 +49,10 @@ internal class BytecodeLoader : IDisposable
 
     private readonly BinaryReader? binaryReader;
     private readonly byte[] bytecode;
+
+    /// <summary>
+    /// Keeps track of where we are in the program (like the cursor of a text editor)
+    /// </summary>
     private int currentBytecodeIndex = 0;
 
     public int BytecodeIndex => currentBytecodeIndex;
@@ -62,11 +69,11 @@ internal class BytecodeLoader : IDisposable
     {
         /*
          * Binary files are loaded in this order:
-         *      Strings
+         *      Strings (UTF-8)
          *      BigIntegers
          *      BigDecimals
-         *      Methods table (the method bodies are still in the bytecode, this just points to them)
-         *      Structure table (structures are just a layout for a readonly array)
+         *      Methods table (the method bodies are still in the bytecode, this just points to them and gives the param count)
+         *      Structure table (structures are just a template for a readonly array)
          */
 
         if (!File.Exists(filePath))
@@ -76,6 +83,7 @@ internal class BytecodeLoader : IDisposable
 
         binaryReader = new(File.OpenRead(filePath), Encoding.UTF8);
 
+        // The "magic number" is not UTF encoded (starts and ends with binary, granted it's just a tab character)
         string loadedMagic = Encoding.ASCII.GetString(binaryReader.ReadBytes(BytecodeHelpers.MagicNumber.Length));
         if (loadedMagic != BytecodeHelpers.MagicNumber)
         {
@@ -107,10 +115,10 @@ internal class BytecodeLoader : IDisposable
         }
 
         /* Load functions table */
+        // Use the shared deserialization method
         DefinedFunctions = HellFunction.GetFunctionData(binaryReader);
 
-        /* Load structure definitions */
-        // Use the shared deserialization method
+        /* Load structure templates */
         MetaStructures = HellStructMetadata.ReadAllFromStream(binaryReader);
 
         // Load the rest of the bytecode (the actual instructions and methods)
@@ -118,6 +126,7 @@ internal class BytecodeLoader : IDisposable
 #if BUFFER_ALL
             binaryReader.ReadBytes((int)binaryReader.BaseStream.Length - (int)binaryReader.BaseStream.Position);
 #else
+            // At some point I plan on making this load sections of the file (to reduce memory usage)
             binaryReader.ReadBytes(bufferSize);
 #endif
 
@@ -190,14 +199,22 @@ internal class BytecodeLoader : IDisposable
         currentBytecodeIndex = position;
     }
 
+    /// <summary>
+    /// Loads 4 bytes as an int (for opcode arguments)
+    /// </summary>
+    /// <returns></returns>
     public int LoadIntArg()
     {
-        var addressBytes = bytecode.AsSpan()[(currentBytecodeIndex)..(currentBytecodeIndex + 4)];
+        var addressBytes = bytecode.AsSpan()[currentBytecodeIndex..(currentBytecodeIndex + 4)];
         int arg = BitConverter.ToInt32(addressBytes);
         currentBytecodeIndex += 4;
         return arg;
     }
 
+    /// <summary>
+    /// Loads 2 bytes as a short (for opcode arguments)
+    /// </summary>
+    /// <returns></returns>
     public short LoadShortArg()
     {
         short arg = BitConverter.ToInt16(bytecode.AsSpan()[currentBytecodeIndex..(currentBytecodeIndex + 2)]);

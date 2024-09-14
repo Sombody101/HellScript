@@ -1,8 +1,10 @@
-﻿// #define PRINT_OPCODES
+﻿//#define PRINT_OPCODES
 
 using HellScriptRuntime.Bytecode;
 using HellScriptRuntime.Runtime.BaseTypes;
-using HellScriptRuntime.Runtime.BaseTypes.Operators;
+using HellScriptRuntime.Runtime.BaseTypes.Collection;
+using HellScriptRuntime.Runtime.BaseTypes.Numbers;
+using HellScriptRuntime.Runtime.BaseTypes.Text;
 using HellScriptShared.Bytecode;
 using System.Numerics;
 
@@ -25,10 +27,10 @@ internal class HellRuntime
 
         var globalFrame = new StackFrame("<global>", null);
 
-        var array = new HellArray();
+        var array = new HellArray(args.Length);
 
         for (int i = 0; i < args.Length; ++i)
-            array.SetValue(new HellInteger(i), new HellString(args[i]));
+            array.SetElement(i, new HellString(args[i]));
 
         globalFrame.AddSymbol(0, array);
 
@@ -60,6 +62,7 @@ internal class HellRuntime
                 case Opcode.NOP:
                     {
                         // No operation
+                        
                         Console.WriteLine(stack.First()?.Value);
                     }
                     continue;
@@ -80,7 +83,7 @@ internal class HellRuntime
                         // Load the double table address
                         int address = bytecodeLoader.LoadIntArg();
                         BigInteger bigInt = bytecodeLoader.GetBigInt(address);
-                        HellInteger hellNum = new(bigInt);
+                        HellBigInteger hellNum = new(bigInt);
 
                         stack.Push(hellNum);
                     }
@@ -90,8 +93,7 @@ internal class HellRuntime
                     {
                         // Load the arg and place it on the stack
                         int num = bytecodeLoader.LoadIntArg();
-                        BigInteger bigFast = new(num);
-                        HellInteger hellInteger = new(bigFast);
+                        HellInteger hellInteger = new(num);
 
                         stack.Push(hellInteger);
                     }
@@ -109,26 +111,50 @@ internal class HellRuntime
                     }
                     break;
 
+                case Opcode.CREATE_ARRAY:
+                    {
+                        int arrayType = bytecodeLoader.LoadIntArg();
+
+                        if (arrayType is -2)
+                        {
+                            // The wanted array is a dictionary (No actual length given)
+                            HellDictionary array = new();
+                            stack.Push(array);
+                        }
+                        else if (arrayType is -1)
+                        {
+                            // Use the first item on the stack as a length
+                            HellInteger length = stack.Pop().As<HellInteger>($"An array length must be smaller than 0 and larger than {long.MaxValue}");
+
+                            HellArray newArray = new(length);
+                            stack.Push(newArray);
+                        }
+                        else
+                        {
+                            // Use the value as a fast value
+                            HellArray newArray = new(arrayType);
+                            stack.Push(newArray);
+                        }
+                    }
+                    break;
+
                 case Opcode.LOAD_ELEMENT:
                     {
                         var index = stack.Pop();
                         var array = stack.First();
 
-                        if (array is not HellArray arr)
+                        if (array.TypeSignature == TypeSignature.Array)
                         {
-                            throw new InvalidOperationException($"Cannot index type {array.HellName()}");
+                            var result = ((HellArray)array).GetElement(index.As<HellInteger>().ToInt64());
+                            stack.Push(result);
                         }
-
-                        var result = arr.GetValueWithKey(index);
-
-                        stack.Push(result);
-                    }
-                    break;
-
-                case Opcode.CREATE_ARRAY:
-                    {
-                        HellArray array = new();
-                        stack.Push(array);
+                        else if (array.TypeSignature == TypeSignature.Dictionary)
+                        {
+                            var result = ((HellDictionary)array).GetValueWithKey(index);
+                            stack.Push(result);
+                        }
+                        else
+                            throw new InvalidOperationException($"Cannot index type {array.HellName()}");
                     }
                     break;
 
@@ -138,12 +164,16 @@ internal class HellRuntime
                         var index = stack.Pop();
                         var array = stack.First();
 
-                        if (array is not HellArray arr)
+                        if (array.TypeSignature == TypeSignature.Array)
                         {
-                            throw new InvalidOperationException($"Cannot index type {array.HellName()} (It is not an array)");
+                            ((HellArray)array).SetElement(index.As<HellInteger>("Type %S cannot be used to index type IHellType[].").ToInt64(), value);
                         }
-
-                        arr.SetValue(index, value);
+                        else if (array.TypeSignature == TypeSignature.Dictionary)
+                        {
+                            ((HellDictionary)array).SetValue(index, value);
+                        }
+                        else
+                            throw new InvalidOperationException($"Cannot index type {array.HellName()}");
                     }
                     break;
 
@@ -160,7 +190,7 @@ internal class HellRuntime
 
                 // Return X value(s) from the stack
                 case Opcode.RETURN_VALUE:
-                        return stack.Pop();
+                    return stack.Pop();
 
                 case Opcode.RETURN_VOID:
                     return Undefined.Null;
@@ -180,10 +210,10 @@ internal class HellRuntime
 
                 case Opcode.BINARY_ADD:
                     {
-                        IHellType? value1 = stack.Pop();
-                        IHellType? value2 = stack.Pop();
+                        IHellNumber value2 = stack.Pop().As<IHellNumber>();
+                        IHellNumber value1 = stack.Pop().As<IHellNumber>();
 
-                        IHellType result = Mathable.Add(value1, value2);
+                        IHellNumber result = IHellNumber.Add(value1, value2);
 
                         stack.Push(result);
                     }
@@ -191,10 +221,10 @@ internal class HellRuntime
 
                 case Opcode.BINARY_SUB:
                     {
-                        IHellType? value1 = stack.Pop();
-                        IHellType? value2 = stack.Pop();
+                        IHellNumber value2 = stack.Pop().As<IHellNumber>();
+                        IHellNumber value1 = stack.Pop().As<IHellNumber>();
 
-                        IHellType result = Mathable.Subtract(value1, value2);
+                        IHellNumber result = IHellNumber.Subtract(value1, value2);
 
                         stack.Push(result);
                     }
@@ -223,7 +253,7 @@ internal class HellRuntime
                         int address = bytecodeLoader.LoadIntArg();
                         IHellType?[] items = stack.Take(2).ToArray();
 
-                        if (items[0] == items[1])
+                        if (items[1] == items[0])
                             bytecodeLoader.JumpTo(position + address);
                     }
                     break;
@@ -233,7 +263,7 @@ internal class HellRuntime
                         int address = bytecodeLoader.LoadIntArg();
                         IHellType?[] items = stack.Take(2).ToArray();
 
-                        if (items[0] != items[1])
+                        if (items[1] != items[0])
                             bytecodeLoader.JumpTo(position + address);
                     }
                     break;
@@ -243,7 +273,7 @@ internal class HellRuntime
                         int address = bytecodeLoader.LoadIntArg();
                         IHellType?[] items = stack.Take(2).ToArray();
 
-                        if (Mathable.GreaterThan(items[0], items[1]))
+                        if (IHellNumber.GreaterThan(items[1].As<IHellNumber>(), items[0].As<IHellNumber>()))
                             bytecodeLoader.JumpTo(position + address);
                     }
                     break;
@@ -253,7 +283,8 @@ internal class HellRuntime
                         int address = bytecodeLoader.LoadIntArg();
                         IHellType?[] items = stack.Take(2).ToArray();
 
-                        if (Mathable.GreaterThan(items[1], items[0]))
+                        // Do the reverse of JMP_GT
+                        if (IHellNumber.LessThan(items[1].As<IHellNumber>(), items[0].As<IHellNumber>()))
                             bytecodeLoader.JumpTo(position + address);
                     }
                     break;
@@ -263,7 +294,10 @@ internal class HellRuntime
                         int address = bytecodeLoader.LoadIntArg();
                         IHellType?[] items = stack.Take(2).ToArray();
 
-                        if (items[0] == items[1] || Mathable.GreaterThan(items[0], items[1]))
+                        IHellNumber item1 = items[1].As<IHellNumber>();
+                        IHellNumber item2 = items[0].As<IHellNumber>();
+
+                        if (item1 == item2 || IHellNumber.GreaterThan(item1, item2))
                             bytecodeLoader.JumpTo(position + address);
                     }
                     break;
@@ -273,7 +307,10 @@ internal class HellRuntime
                         int address = bytecodeLoader.LoadIntArg();
                         IHellType?[] items = stack.Take(2).ToArray();
 
-                        if (items[0] == items[1] || !Mathable.GreaterThan(items[0], items[1]))
+                        IHellNumber item1 = items[1].As<IHellNumber>();
+                        IHellNumber item2 = items[0].As<IHellNumber>();
+
+                        if (item1 == item2 || !IHellNumber.GreaterThan(item1, item2))
                             bytecodeLoader.JumpTo(position + address);
                     }
                     break;
@@ -283,7 +320,7 @@ internal class HellRuntime
                         int address = bytecodeLoader.LoadIntArg();
                         IHellType?[] items = stack.Take(2).ToArray();
 
-                        if (TypeHelper.TypesMatch(items[0], items[1]))
+                        if (TypeHelper.TypesMatch(items[1].As<IHellNumber>(), items[0].As<IHellNumber>()))
                             bytecodeLoader.JumpTo(position + address);
                     }
                     break;
@@ -297,7 +334,7 @@ internal class HellRuntime
                         HellFunction method = bytecodeLoader.DefinedFunctions[methodIndex];
 
                         StackFrame methodFrame = new(functionBeingCalled: method);
-                        
+
                         for (short i = (short)(method.ParameterCount - 1); i > -1; --i)
                             methodFrame.AddSymbol(i, stack.Pop());
 
@@ -310,7 +347,7 @@ internal class HellRuntime
                         bytecodeLoader.JumpTo(returnAddress);
                         Frames.Pop();
 
-                        if (returnedValue != Undefined.Null)
+                        if (returnedValue is not Undefined)
                             stack.Push(returnedValue);
                     }
                     break;

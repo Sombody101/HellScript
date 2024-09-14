@@ -2,9 +2,7 @@
 
 namespace HellScriptRuntime.Runtime.BaseTypes;
 
-internal interface IHellType : IComparable<IHellType>,
-    IEquatable<IHellType>,
-    IConvertible
+internal interface IHellType : IEquatable<IHellType>
 {
     public object Value { get; }
 

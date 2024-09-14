@@ -86,6 +86,9 @@ internal static class BytecodeHelpers
                 or Opcode.STORE_FIELD
                 or Opcode.NEW_INSTANCE
 
+            // "Collections" (array/dictionary)
+                or Opcode.CREATE_ARRAY
+
             // Branches (Not really needed; Can be hard coded)
                 or (>= Opcode.JMP and <= Opcode.JMP_LTEQ)
 

@@ -659,7 +659,7 @@ internal sealed class HellAsmGenerator : HellAsm_ParserBaseVisitor<byte[]>
         }
         else if (context.IntegerConstant() is { } numberLiteral)
         {
-            string numberText = numberLiteral.GetText();
+            string numberText = numberLiteral.GetText().Replace("_", string.Empty);
 
             int index = constants.GetIndexForNumber(numberText);
             return BitConverter.GetBytes(index);

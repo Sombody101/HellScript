@@ -17,6 +17,7 @@ internal static class Program
         if (args.Length is not 2)
         {
             Console.WriteLine("2 argument required: hellc <input file> <output file>");
+            Environment.Exit(-1);
         }
 #endif
 
